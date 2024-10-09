@@ -1,3 +1,4 @@
 # TODO:
 
+- Maybe use quadtree for tiles ?
 
