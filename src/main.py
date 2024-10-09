@@ -22,7 +22,7 @@ def main():
     angle = float(sys.argv[1])
     filename = (sys.argv[2])
 
-    ex = extractor.Extractor()
+    ex = extractor.Extractor(angle)
     ex.read_file(filename)
 
     end = time.time()
