@@ -3,11 +3,45 @@
 import sys
 import logging
 import math
+from operator import itemgetter
 
 logger = logging.getLogger(__name__)
 
+def calculate_z_value(x: float, y: float,
+        points: list[tuple[(float, float, float)]],
+        num_of_values: int = 4
+        ) -> float:
 
-def calculate_z_value(x: float, y: float, points: list[tuple[(float, float, float)]]) -> float:
+    assert num_of_values > 3, "To interpolate the z values at least 4 points must be used!"
+    assert num_of_values <= len(points), "Number of points too low!"
+
+    values: list[tuple[(float, float)]] = []
+    max_dist: float = sys.float_info.max
+
+    for _ in range(num_of_values):
+        values.append((max_dist, 0.0))
+
+    for (x2, y2, z) in points:
+        d: float = math.hypot(x - x2, y - y2)
+
+        if d < values[-1][0]:
+            values[-1] = (d, z)
+            values.sort(key = itemgetter(0))
+
+    result: float = 0.0
+    factor_sum: float = 0.0
+
+    for (dist, z_val) in values:
+        factor = math.exp(-dist * 0.1)
+        result = result + (z_val * factor)
+        factor_sum = factor_sum + factor
+
+    if factor_sum > 0.0:
+        result = result / factor_sum
+
+    return result
+
+def calculate_z_value2(x: float, y: float, points: list[tuple[(float, float, float)]]) -> float:
     result = math.nan
 
     d1: float = sys.float_info.max
@@ -62,21 +96,17 @@ def calculate_z_value(x: float, y: float, points: list[tuple[(float, float, floa
     return result
 
 
-class EmptyTileError(Exception):
-    pass
-
-
 class Tile:
     def __init__(self, min_x: float, min_y: float, 
-            max_x: float, max_y: float, radius: float):
+            max_x: float, max_y: float):
         self.min_x: float = min_x
         self.min_y: float = min_y
         self.max_x: float = max_x
         self.max_y: float = max_y
-        self.proximity_radius = radius
         self.center_x: float = (self.min_x + self.max_x) / 2.0
         self.center_y: float = (self.min_y + self.max_y) / 2.0
         self.points: list[tuple[(float, float, float)]] = []
+        self.maybe_points: list[tuple[(float, float, float, float)]] = []
 
     def point_in_tile(self, x: float, y: float) -> bool:
         in_x: bool = (x >= self.min_x) and (x < self.max_x)
@@ -84,38 +114,24 @@ class Tile:
 
         return in_x and in_y
 
-    def point_close_to_tile(self, x: float, y: float) -> bool:
-        d = math.hypot(self.center_x - x, self.center_y - y)
-        return d <= self.proximity_radius
-
-    def enough_points(self) -> bool:
-        return len(self.points) > 3
-
     def add_point(self, x: float, y: float, z: float):
         self.points.append((x, y, z))
 
+    def maybe_close_point(self, x, y, z):
+        d: float = math.hypot(self.center_x - x, self.center_y - y)
+
+        self.maybe_points.append((d, x, y, z))
+
+        if len(self.maybe_points) > 10:
+            self.maybe_points.sort(key = itemgetter(0))
+            del self.maybe_points[-1]
+
+    def merge_points(self):
+        for (_, x, y, z) in self.maybe_points:
+            self.points.append((x, y, z))
+
     def calculate_z_value(self, x: float, y: float) -> float:
-        if self.enough_points():
-            return calculate_z_value(x, y, self.points)
-        else:
-            raise EmptyTileError
-            # return math.nan
-
-    def set_z_values(self, points):
-        z = calculate_z_value(self.min_x, self.min_y, points)
-        self.points.append((self.min_x, self.min_y, z))
-
-        z = calculate_z_value(self.min_x, self.max_y, points)
-        self.points.append((self.min_x, self.max_y, z))
-
-        z = calculate_z_value(self.max_x, self.min_y, points)
-        self.points.append((self.max_x, self.min_y, z))
-
-        z = calculate_z_value(self.max_x, self.max_y, points)
-        self.points.append((self.max_x, self.max_y, z))
-
-        z = calculate_z_value(self.center_x, self.center_y, points)
-        self.points.append((self.center_x, self.center_y, z))
+        return calculate_z_value(x, y, self.points)
 
 
 class Extractor:
@@ -149,18 +165,15 @@ class Extractor:
             self.create_tiles()
             f.seek(0) # rewind file
             self.read_data_points(f)
-            self.update_tiles()
 
     def create_tiles(self):
-        x1 = self.min_x
-        x2 = x1 + self.tile_dx
-        y1 = self.min_y
-        y2 = y1 + self.tile_dy
-
-        radius = max(self.tile_dx, self.tile_dy) * 2.0
+        x1: float = self.min_x
+        x2: float = x1 + self.tile_dx
+        y1: float = self.min_y
+        y2: float = y1 + self.tile_dy
 
         for _ in range(self.num_of_tiles):
-            new_tile = Tile(x1, y1, x2, y2, radius)
+            new_tile = Tile(x1, y1, x2, y2)
             self.tiles.append(new_tile)
 
             x1 += self.tile_dx
@@ -172,12 +185,6 @@ class Extractor:
                 y1 += self.tile_dy
                 y2 = y1 + self.tile_dy
 
-    def update_tiles(self):
-        for tile in self.tiles:
-            #logger.debug(f"   min_x: {tile.min_x}, min_y: {tile.min_y}, max_x: {tile.max_x}, max_y: {tile.max_y}")
-            tile.set_z_values(self.points)
-            logger.debug(f"Points in tile: {len(tile.points)}")
-
     def yield_points(self):
         for tile in self.tiles:
             for point in tile.points:
@@ -188,11 +195,11 @@ class Extractor:
             if line.startswith("#"):
                 continue
 
-            items = line.split()
+            items: list[str] = line.split()
 
-            x = float(items[0])
-            y = float(items[1])
-            z = float(items[2])
+            x: float = float(items[0])
+            y: float = float(items[1])
+            z: float = float(items[2])
 
             yield (x, y, z)
 
@@ -230,7 +237,13 @@ class Extractor:
             self.points.append((x, y, z))
 
             for tile in self.tiles:
-                if tile.point_close_to_tile(x, y):
+                if tile.point_in_tile(x, y):
                     tile.add_point(x, y, z)
+                else:
+                    tile.maybe_close_point(x, y, z)
+
+        for tile in self.tiles:
+            tile.merge_points()
+            logger.debug(f"Number of points in tile: {len(tile.points)}")
 
 
