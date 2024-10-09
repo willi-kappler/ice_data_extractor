@@ -7,8 +7,10 @@ from operator import itemgetter
 
 logger = logging.getLogger(__name__)
 
+PointList = list[tuple[(float, float, float)]]
+
 def calculate_z_value(x: float, y: float,
-        points: list[tuple[(float, float, float)]],
+        points: PointList,
         num_of_values: int = 4
         ) -> float:
 
@@ -41,7 +43,7 @@ def calculate_z_value(x: float, y: float,
 
     return result
 
-def calculate_z_value2(x: float, y: float, points: list[tuple[(float, float, float)]]) -> float:
+def calculate_z_value2(x: float, y: float, points: PointList) -> float:
     result = math.nan
 
     d1: float = sys.float_info.max
@@ -105,7 +107,7 @@ class Tile:
         self.max_y: float = max_y
         self.center_x: float = (self.min_x + self.max_x) / 2.0
         self.center_y: float = (self.min_y + self.max_y) / 2.0
-        self.points: list[tuple[(float, float, float)]] = []
+        self.points: PointList = []
         self.maybe_points: list[tuple[(float, float, float, float)]] = []
 
     def point_in_tile(self, x: float, y: float) -> bool:
@@ -135,12 +137,20 @@ class Tile:
 
 
 class Extractor:
-    def __init__(self):
+    def __init__(self, angle: float):
+        self.angle: float = angle
+        self.step_x = 500 # [m]
+        self.step_y = math.cos(math.radians(self.angle)) * self.step_x
+
+        logger.debug(f"Angle: {self.angle}")
+        logger.debug(f"X step: {self.step_x} m, Y step: {self.step_y}")
+
         self.tile_x: int = 30
         self.tile_y: int = 30
         self.num_of_tiles: int = self.tile_x * self.tile_y
         self.tiles: list[Tile] = []
-        self.points: list[tuple[(float, float, float)]] = []
+        self.starting_points: list[tuple[(float, float)]] = []
+        self.extracted_points: PointList = []
 
         self.min_x: float = sys.float_info.max
         self.min_y: float = self.min_x
@@ -165,6 +175,9 @@ class Extractor:
             self.create_tiles()
             f.seek(0) # rewind file
             self.read_data_points(f)
+
+        self.extract_points()
+        self.save_extracted_points()
 
     def create_tiles(self):
         x1: float = self.min_x
@@ -200,11 +213,12 @@ class Extractor:
             x: float = float(items[0])
             y: float = float(items[1])
             z: float = float(items[2])
+            column: int = int(items[3])
 
-            yield (x, y, z)
+            yield (x, y, z, column)
 
     def find_min_max_values(self, file):
-        for (x, y, z) in self.yield_values_from_file(file):
+        for (x, y, z, _) in self.yield_values_from_file(file):
             if x < self.min_x:
                 self.min_x = x
             elif x > self.max_x:
@@ -233,8 +247,9 @@ class Extractor:
         logger.debug(f"Tile spacing: x: {self.tile_dx}, y: {self.tile_dy}")
 
     def read_data_points(self, file):
-        for (x, y, z) in self.yield_values_from_file(file):
-            self.points.append((x, y, z))
+        for (x, y, z, column) in self.yield_values_from_file(file):
+            if column == 1:
+                self.starting_points.append((x, y))
 
             for tile in self.tiles:
                 if tile.point_in_tile(x, y):
@@ -245,5 +260,34 @@ class Extractor:
         for tile in self.tiles:
             tile.merge_points()
             logger.debug(f"Number of points in tile: {len(tile.points)}")
+
+        logger.debug(f"Number of starting points: {len(self.starting_points)}")
+
+    def calculate_z_value(self, x: float, y: float) -> float:
+        result: float = 0.0
+
+        for tile in self.tiles:
+            if tile.point_in_tile(x, y):
+                result = tile.calculate_z_value(x, y)
+
+        return result
+
+    def extract_points(self):
+        for (sx, sy) in self.starting_points:
+            x: float = sx + self.step_x
+            y: float = sy + self.step_y
+
+            while (x < self.max_x) and (y < self.max_y):
+                z = self.calculate_z_value(x, y)
+                self.extracted_points.append((x, y, z))
+
+                x = x + self.step_x
+                y = y + self.step_y
+
+
+    def save_extracted_points(self):
+        with open("extracted_points.csv", "w") as f:
+            for (x, y, z) in self.extracted_points:
+                f.write(f"{x}, {y}, {z}\n")
 
 
