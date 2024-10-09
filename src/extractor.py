@@ -140,7 +140,7 @@ class Extractor:
     def __init__(self, angle: float):
         self.angle: float = angle
         self.step_x = 500 # [m]
-        self.step_y = math.cos(math.radians(self.angle)) * self.step_x
+        self.step_y = math.sin(math.radians(self.angle)) * self.step_x
 
         logger.debug(f"Angle: {self.angle}")
         logger.debug(f"X step: {self.step_x} m, Y step: {self.step_y}")
