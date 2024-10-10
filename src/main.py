@@ -12,6 +12,7 @@ import extractor
 
 logger = logging.getLogger(__name__)
 
+
 def main():
     start = time.time()
 
@@ -29,6 +30,7 @@ def main():
     duration = end - start
 
     logger.info(f"Duration in seconds: {duration}")
+
 
 if __name__ == "__main__":
     main()

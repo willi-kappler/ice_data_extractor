@@ -9,10 +9,10 @@ logger = logging.getLogger(__name__)
 
 PointList = list[tuple[(float, float, float)]]
 
+
 def calculate_z_value(x: float, y: float,
         points: PointList,
-        num_of_values: int = 4
-        ) -> float:
+        num_of_values: int = 4) -> float:
 
     assert num_of_values > 3, "To interpolate the z values at least 4 points must be used!"
     assert num_of_values <= len(points), "Number of points too low!"
@@ -28,7 +28,7 @@ def calculate_z_value(x: float, y: float,
 
         if d < values[-1][0]:
             values[-1] = (d, z)
-            values.sort(key = itemgetter(0))
+            values.sort(key=itemgetter(0))
 
     result: float = 0.0
     factor_sum: float = 0.0
@@ -45,7 +45,7 @@ def calculate_z_value(x: float, y: float,
 
 
 class Tile:
-    def __init__(self, min_x: float, min_y: float, 
+    def __init__(self, min_x: float, min_y: float,
             max_x: float, max_y: float):
         self.min_x: float = min_x
         self.min_y: float = min_y
@@ -74,7 +74,7 @@ class Tile:
 
         if d < self.maybe_points[-1][0]:
             self.maybe_points[-1] = (d, x, y, z)
-            self.maybe_points.sort(key = itemgetter(0))
+            self.maybe_points.sort(key=itemgetter(0))
 
     def merge_points(self):
         for (_, x, y, z) in self.maybe_points:
@@ -90,7 +90,7 @@ class Tile:
 class Extractor:
     def __init__(self, angle: float):
         self.angle: float = angle
-        self.step_x = 500 # [m]
+        self.step_x = 500  # [m]
         self.step_y = math.sin(math.radians(self.angle)) * self.step_x
 
         logger.debug(f"Angle: {self.angle}")
@@ -124,7 +124,7 @@ class Extractor:
         with open(filename, "r") as f:
             self.find_min_max_values(f)
             self.create_tiles()
-            f.seek(0) # rewind file
+            f.seek(0)  # rewind file
             self.read_data_points(f)
 
         self.extract_points()
@@ -234,7 +234,6 @@ class Extractor:
 
                 x = x + self.step_x
                 y = y + self.step_y
-
 
     def save_extracted_points(self):
         with open("extracted_points.csv", "w") as f:
