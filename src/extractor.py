@@ -43,60 +43,6 @@ def calculate_z_value(x: float, y: float,
 
     return result
 
-def calculate_z_value2(x: float, y: float, points: PointList) -> float:
-    result = math.nan
-
-    d1: float = sys.float_info.max
-    d2: float = d1
-    d3: float = d1
-    d4: float = d1
-
-    z1: float = math.nan
-    z2: float = z1
-    z3: float = z1
-    z4: float = z1
-
-    for (x2, y2, z) in points:
-        d = math.hypot(x - x2, y - y2)
-
-        if d < d1:
-            d4 = d3
-            d3 = d2
-            d2 = d1
-            d1 = d
-
-            z4 = z3
-            z3 = z2
-            z2 = z1
-            z1 = z
-        elif d < d2:
-            d4 = d3
-            d3 = d2
-            d2 = d
-
-            z4 = z3
-            z3 = z2
-            z2 = z
-        elif d < d3:
-            d4 = d3
-            d3 = d
-
-            z4 = z3
-            z3 = z
-        elif d < d4:
-            d4 = d
-            z4 = z
-
-    f1 = math.exp(-d1 / 10.0)
-    f2 = math.exp(-d2 / 10.0)
-    f3 = math.exp(-d3 / 10.0)
-    f4 = math.exp(-d4 / 10.0)
-
-    result = (z1 * f1) + (z2 * f2) + (z3 * f3) + (z4 * f4)
-    result = result / (f1 + f2 + f3 + f4)
-
-    return result
-
 
 class Tile:
     def __init__(self, min_x: float, min_y: float, 
@@ -124,11 +70,14 @@ class Tile:
 
         self.maybe_points.append((d, x, y, z))
 
-        if len(self.maybe_points) > 10:
+        if len(self.maybe_points) > 100:
             self.maybe_points.sort(key = itemgetter(0))
-            del self.maybe_points[-1]
+            self.maybe_points = self.maybe_points[:10]
 
     def merge_points(self):
+        self.maybe_points.sort(key = itemgetter(0))
+        self.maybe_points = self.maybe_points[:10]
+
         for (_, x, y, z) in self.maybe_points:
             self.points.append((x, y, z))
 
@@ -143,7 +92,7 @@ class Extractor:
         self.step_y = math.sin(math.radians(self.angle)) * self.step_x
 
         logger.debug(f"Angle: {self.angle}")
-        logger.debug(f"X step: {self.step_x} m, Y step: {self.step_y}")
+        logger.debug(f"X step: {self.step_x} m, Y step: {self.step_y} m")
 
         self.tile_x: int = 30
         self.tile_y: int = 30
