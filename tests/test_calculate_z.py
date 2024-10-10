@@ -77,6 +77,11 @@ class TestZCalculation(unittest.TestCase):
         z = extractor.calculate_z_value(100.0, 200.0, points)
         self.assertAlmostEqual(z, 4.966, 2)
 
+    def test_calculation9(self):
+        points = [(0.0, 0.0, 10.0), (10.0, 0.0, 8.0), (0.0, 10.0, 2.0), (10.0, 10.0, 5.0)]
+        z = extractor.calculate_z_value(3000.0, 4000.0, points)
+        self.assertAlmostEqual(z, 5.275, 2)
+
 
 if __name__ == "__main__":
     log_file_name: str = "calculation.log"
