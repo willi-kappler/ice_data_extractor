@@ -1,4 +1,7 @@
 # TODO:
 
 - Maybe use quadtree for tiles ?
+- Use argument parser.
+- Add more options via command line arguments.
+
 
