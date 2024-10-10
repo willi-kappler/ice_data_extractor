@@ -223,13 +223,11 @@ class Extractor:
         logger.debug(f"Number of starting points: {len(self.starting_points)}")
 
     def calculate_z_value(self, x: float, y: float) -> float:
-        result: float = 0.0
-
         for tile in self.tiles:
             if tile.point_in_tile(x, y):
-                result = tile.calculate_z_value(x, y)
+                return tile.calculate_z_value(x, y)
 
-        return result
+        return 0.0
 
     def extract_points(self):
         for (sx, sy) in self.starting_points:
