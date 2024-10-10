@@ -21,9 +21,10 @@ def main():
     logging.basicConfig(filename=log_file_name, level=logging.DEBUG, format=log_format)
 
     angle = float(sys.argv[1])
-    filename = (sys.argv[2])
+    step_x = float(sys.argv[2])
+    filename = (sys.argv[3])
 
-    ex = extractor.Extractor(angle)
+    ex = extractor.Extractor(angle, step_x)
     ex.read_file(filename)
 
     end = time.time()
