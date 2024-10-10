@@ -56,6 +56,10 @@ class Tile:
         self.points: PointList = []
         self.maybe_points: list[tuple[(float, float, float, float)]] = []
 
+        max_dist: float = sys.float_info.max
+        for _ in range(10):
+            self.maybe_points.append((max_dist, 0.0, 0.0, 0.0))
+
     def point_in_tile(self, x: float, y: float) -> bool:
         in_x: bool = (x >= self.min_x) and (x < self.max_x)
         in_y: bool = (y >= self.min_y) and (y < self.max_y)
@@ -68,18 +72,16 @@ class Tile:
     def maybe_close_point(self, x, y, z):
         d: float = math.hypot(self.center_x - x, self.center_y - y)
 
-        self.maybe_points.append((d, x, y, z))
-
-        if len(self.maybe_points) > 100:
+        if d < self.maybe_points[-1][0]:
+            self.maybe_points[-1] = (d, x, y, z)
             self.maybe_points.sort(key = itemgetter(0))
-            self.maybe_points = self.maybe_points[:10]
 
     def merge_points(self):
-        self.maybe_points.sort(key = itemgetter(0))
-        self.maybe_points = self.maybe_points[:10]
-
         for (_, x, y, z) in self.maybe_points:
             self.points.append((x, y, z))
+
+        # No longer needed
+        del self.maybe_points
 
     def calculate_z_value(self, x: float, y: float) -> float:
         return calculate_z_value(x, y, self.points)
