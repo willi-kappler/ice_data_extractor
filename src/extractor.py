@@ -30,16 +30,24 @@ def calculate_z_value(x: float, y: float,
             values[-1] = (d, z)
             values.sort(key=itemgetter(0))
 
-    result: float = 0.0
-    factor_sum: float = 0.0
+    exp_factor = 1.0
 
-    for (dist, z_val) in values:
-        factor = math.exp(-dist * 0.1)
-        result = result + (z_val * factor)
-        factor_sum = factor_sum + factor
+    while True:
+        result: float = 0.0
+        factor_sum: float = 0.0
 
-    if factor_sum > 0.0:
-        result = result / factor_sum
+        for (dist, z_val) in values:
+            factor = math.exp(-dist * exp_factor)
+            result = result + (z_val * factor)
+            factor_sum = factor_sum + factor
+
+        if factor_sum > 0.0:
+            result = result / factor_sum
+            break
+        else:
+            #logger.debug(f"Factor sum is zero! Exp factor: {exp_factor}")
+            #logger.debug(f"Values: {values}")
+            exp_factor = exp_factor * 0.5
 
     return result
 
@@ -210,7 +218,7 @@ class Extractor:
 
         for tile in self.tiles:
             tile.merge_points()
-            logger.debug(f"Number of points in tile: {len(tile.points)}")
+            #logger.debug(f"Number of points in tile: {len(tile.points)}")
 
         logger.debug(f"Number of starting points: {len(self.starting_points)}")
 
