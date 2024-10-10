@@ -45,8 +45,8 @@ def calculate_z_value(x: float, y: float,
             result = result / factor_sum
             break
         else:
-            #logger.debug(f"Factor sum is zero! Exp factor: {exp_factor}")
-            #logger.debug(f"Values: {values}")
+            # logger.debug(f"Factor sum is zero! Exp factor: {exp_factor}")
+            # logger.debug(f"Values: {values}")
             exp_factor = exp_factor * 0.5
 
     return result
@@ -218,7 +218,7 @@ class Extractor:
 
         for tile in self.tiles:
             tile.merge_points()
-            #logger.debug(f"Number of points in tile: {len(tile.points)}")
+            # logger.debug(f"Number of points in tile: {len(tile.points)}")
 
         logger.debug(f"Number of starting points: {len(self.starting_points)}")
 
