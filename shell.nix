@@ -7,6 +7,8 @@
         ipython
         mypy
         scipy
+        matplotlib
+        numpy
         ]))
       pyright
       ruff
