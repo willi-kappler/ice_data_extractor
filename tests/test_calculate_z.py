@@ -88,9 +88,7 @@ if __name__ == "__main__":
     log_format = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
     logging.basicConfig(filename=log_file_name, level=logging.DEBUG, format=log_format)
 
-    try:
-        unittest.main()
-    finally:
-        p: pathlib.Path = pathlib.Path(log_file_name)
-        p.unlink()
+    unittest.main()
+    p: pathlib.Path = pathlib.Path(log_file_name)
+    p.unlink()
 
