@@ -107,7 +107,12 @@ class Extractor:
         self.tiles: list[Tile] = []
         self.start_points: PointList = []
         self.end_points: PointList = []
-        self.extracted_points: PointList = []
+        self.extracted_points_x: list[float] = []
+        self.extracted_points_y: list[float] = []
+        self.extracted_points_z: list[float] = []
+        self.original_points_x: list[float] = []
+        self.original_points_y: list[float] = []
+        self.original_points_z: list[float] = []
 
         self.min_x: float = sys.float_info.max
         self.min_y: float = self.min_x
@@ -127,6 +132,9 @@ class Extractor:
         self.last_col: int = 0
         self.last_row: int = 0
         self.calculated_angle: float = 0.0
+
+        self.original_dx: float = 0.0
+        self.original_dy: float = 0.0
 
     def read_file(self, filename: str):
         logger.info(f"Reading file: {filename}")
@@ -224,6 +232,10 @@ class Extractor:
                 dx: float = x - self.start_points[-1][0]
                 dy: float = y - self.start_points[-1][1]
                 logger.debug(f"Steps from points: dx: {dx}, dy: {dy}")
+
+                if self.original_dx == 0.0:
+                    self.original_dx = dx
+                    self.original_dy = dy
             elif column == self.last_col:
                 self.end_points.append((x, y, z))
 
@@ -232,6 +244,10 @@ class Extractor:
                     tile.add_point(x, y, z)
                 else:
                     tile.maybe_close_point(x, y, z)
+
+            self.original_points_x.append(x)
+            self.original_points_y.append(y)
+            self.original_points_z.append(z)
 
         for tile in self.tiles:
             tile.merge_points()
@@ -259,20 +275,34 @@ class Extractor:
         return 0.0
 
     def extract_points(self):
+        ex: float = 0.0
+        ey: float = 0.0
+
         for (sx, sy, sz) in self.start_points:
-            self.extracted_points.append((sx, sy, sz))
+            ex = 0.0
+            ey = ey + self.original_dy
+
+            self.extracted_points_x.append(ex)
+            self.extracted_points_y.append(ey)
+            self.extracted_points_z.append(sz)
             logger.debug(f"Starting point: {sx}, {sy}, {sz}")
 
             x: float = sx + self.step_x
             y: float = sy + self.step_y
 
+            ex = ex + self.step_x
+
             while True:
                 z = self.calculate_z_value(x, y)
-                self.extracted_points.append((x, y, z))
+                self.extracted_points_x.append(ex)
+                self.extracted_points_y.append(ey)
+                self.extracted_points_z.append(z)
                 logger.debug(f"Calculated point: {x}, {y}, {z}")
 
                 x = x + self.step_x
                 y = y + self.step_y
+
+                ex = ex + self.step_x
 
                 if (x > self.max_x) or (x < self.min_x):
                     break
@@ -283,7 +313,11 @@ class Extractor:
 
     def save_extracted_points(self):
         with open("extracted_points.csv", "w") as f:
-            for (x, y, z) in self.extracted_points:
+            num_points = len(self.extracted_points_x)
+            for i in range(num_points):
+                x = self.extracted_points_x[i]
+                y = self.extracted_points_y[i]
+                z = self.extracted_points_z[i]
                 f.write(f"{x}, {y}, {z}\n")
 
 
