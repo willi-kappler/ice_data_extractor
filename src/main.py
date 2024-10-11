@@ -7,7 +7,6 @@ import time
 
 # External imports
 import matplotlib.pyplot as plt
-import numpy as np
 
 # Local imports
 import extractor
@@ -33,10 +32,10 @@ def plot_data(ex: extractor.Extractor):
     cmap = ax1.tricontourf(x1, y1, z1, cmap="RdBu_r")
 
     for (x, y, _) in ex.start_points:
-        ax1.plot(x, y, "yo")
+        ax1.plot(x, y, "yo")  # yellow corcle
 
     for (x, y, _) in ex.end_points:
-        ax1.plot(x, y, "go")
+        ax1.plot(x, y, "go")  # green circle
 
     fig.colorbar(cmap, ax=ax1)
 
@@ -44,6 +43,7 @@ def plot_data(ex: extractor.Extractor):
     fig.colorbar(cmap, ax=ax2)
 
     plt.savefig("plot.png")
+
 
 def main():
     start = time.time()
@@ -54,11 +54,9 @@ def main():
     logging.getLogger("matplotlib").setLevel(logging.WARNING)
     logging.getLogger("PIL").setLevel(logging.WARNING)
 
-    angle = float(sys.argv[1])
-    step_x = float(sys.argv[2])
-    filename = (sys.argv[3])
+    filename = (sys.argv[1])
 
-    ex = extractor.Extractor(angle, step_x)
+    ex = extractor.Extractor()
     ex.read_file(filename)
 
     plot_data(ex)
