@@ -5,9 +5,7 @@ import logging
 import math
 
 # External imports:
-from scipy.interpolate import NearestNDInterpolator
-# from scipy.interpolate import CloughTocher2DInterpolator
-
+from scipy.spatial import KDTree
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +14,7 @@ PointList = list[tuple[(float, float, float)]]
 
 class Extractor:
     def __init__(self):
-        self.start_x: float = -1283169.718723
+        self.start_x: float = -1293737.074199
         self.start_y: float = 124083.532967
 
         self.dx1: float = -6.643222999991849
@@ -57,7 +55,7 @@ class Extractor:
         self.data_dy2: float
         self.row_length: float
 
-        self.interpolator: NearestNDInterpolator = NearestNDInterpolator([(0.0, 0.0)], [0.0])
+        self.kd_tree = KDTree([(0.0, 0.0), (0.0, 0.0)])
 
     def read_file(self, filename: str):
         logger.info(f"Reading file: {filename}")
@@ -152,8 +150,7 @@ class Extractor:
         logger.debug(f"Total column dx: {self.column_dx}, dy: {self.column_dy}")
         logger.debug(f"Total column length: {self.column_length}")
 
-        self.interpolator = NearestNDInterpolator(
-            list(zip(self.original_points_x, self.original_points_y)), self.original_points_z)
+        self.kd_tree = KDTree(list(zip(self.original_points_x, self.original_points_y)))
 
         self.calculated_angle = math.degrees(math.atan(self.row_dy / self.row_dx))
         logger.debug(f"Calculated row angle: {self.calculated_angle}")
@@ -161,6 +158,7 @@ class Extractor:
     def extract_points(self):
         x: float = self.start_x
         y: float = self.start_y
+        z: float = 0.0
 
         for i in range(self.num_of_rows):
             x = self.start_x + (float(i) * self.dx2)
@@ -168,11 +166,47 @@ class Extractor:
             for _ in range(self.num_of_cols):
                 self.extracted_points_x.append(x)
                 self.extracted_points_y.append(y)
+
+                (distances, indices) = self.kd_tree.query((x, y), k=4)
+
+                d1: float = distances[0]
+                d2: float = distances[1]
+                d3: float = distances[2]
+                d4: float = distances[3]
+
+                i1: int = indices[0]
+                i2: int = indices[1]
+                i3: int = indices[2]
+                i4: int = indices[3]
+
+                z1: float = self.original_points_z[i1]
+                z2: float = self.original_points_z[i2]
+                z3: float = self.original_points_z[i3]
+                z4: float = self.original_points_z[i4]
+
+                s: float = 1.0
+
+                while True:
+                    f1: float = math.exp(-d1 * s)
+                    f2: float = math.exp(-d2 * s)
+                    f3: float = math.exp(-d3 * s)
+                    f4: float = math.exp(-d4 * s)
+
+                    f_sum = f1 + f2 + f3 + f4
+
+                    if f_sum > 0.0:
+                        break
+
+                    s = s * 0.5
+                    logger.debug(f"Scale: {s}, x: {x}, y: {y}, d1: {d1}, d2: {d2}, d3: {d3}, d4: {d4}")
+
+
+                z = (z1 * f1) + (z2 * f2) + (z3 * f3) + (z4 * f4) / f_sum
+
+                self.extracted_points_z.append(z)
+
                 x = x + self.dx1
                 y = y + self.dy1
-
-        z_values = self.interpolator(self.extracted_points_x, self.extracted_points_y)
-        self.extracted_points_z = list(z_values)
 
     def save_extracted_points(self):
         with open("extracted_points.csv", "w") as f:
