@@ -1,9 +1,12 @@
 
-# Python imports
+# Python imports:
 import sys
 import logging
 import math
 from operator import itemgetter
+
+# External imports:
+
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +18,10 @@ def calculate_z_value(x: float, y: float,
         num_of_values: int = 4) -> float:
 
     assert num_of_values > 3, "To interpolate the z values at least 4 points must be used!"
-    assert num_of_values <= len(points), "Number of points too low!"
+
+    if len(points) < num_of_values:
+        # Too few points to interpolate!
+        return 0.0
 
     values: list[tuple[(float, float)]] = []
     max_dist: float = sys.float_info.max
@@ -62,11 +68,6 @@ class Tile:
         self.center_x: float = (self.min_x + self.max_x) / 2.0
         self.center_y: float = (self.min_y + self.max_y) / 2.0
         self.points: PointList = []
-        self.maybe_points: list[tuple[(float, float, float, float)]] = []
-
-        max_dist: float = sys.float_info.max
-        for _ in range(10):
-            self.maybe_points.append((max_dist, 0.0, 0.0, 0.0))
 
     def point_in_tile(self, x: float, y: float) -> bool:
         in_x: bool = (x >= self.min_x) and (x < self.max_x)
@@ -76,20 +77,6 @@ class Tile:
 
     def add_point(self, x: float, y: float, z: float):
         self.points.append((x, y, z))
-
-    def maybe_close_point(self, x, y, z):
-        d: float = math.hypot(self.center_x - x, self.center_y - y)
-
-        if d < self.maybe_points[-1][0]:
-            self.maybe_points[-1] = (d, x, y, z)
-            self.maybe_points.sort(key=itemgetter(0))
-
-    def merge_points(self):
-        for (_, x, y, z) in self.maybe_points:
-            self.points.append((x, y, z))
-
-        # No longer needed
-        del self.maybe_points
 
     def calculate_z_value(self, x: float, y: float) -> float:
         return calculate_z_value(x, y, self.points)
@@ -101,8 +88,8 @@ class Extractor:
         self.step_x: float = step_x
         self.step_y: float = 0.0
 
-        self.tile_x: int = 30
-        self.tile_y: int = 30
+        self.tile_x: int = 100
+        self.tile_y: int = 100
         self.num_of_tiles: int = self.tile_x * self.tile_y
         self.tiles: list[Tile] = []
 
@@ -245,16 +232,10 @@ class Extractor:
             for tile in self.tiles:
                 if tile.point_in_tile(x, y):
                     tile.add_point(x, y, z)
-                else:
-                    tile.maybe_close_point(x, y, z)
 
             self.original_points_x.append(x)
             self.original_points_y.append(y)
             self.original_points_z.append(z)
-
-        for tile in self.tiles:
-            tile.merge_points()
-            # logger.debug(f"Number of points in tile: {len(tile.points)}")
 
         logger.debug(f"Number of starting points: {len(self.start_points)}")
 
@@ -278,34 +259,24 @@ class Extractor:
         return 0.0
 
     def extract_points(self):
-        ex: float = 0.0
-        ey: float = 0.0
-
         for (sx, sy, sz) in self.start_points:
-            ex = 0.0
-            ey = ey + self.original_dy
-
-            self.extracted_points_x.append(ex)
-            self.extracted_points_y.append(ey)
+            self.extracted_points_x.append(sx)
+            self.extracted_points_y.append(sy)
             self.extracted_points_z.append(sz)
             # logger.debug(f"Starting point: {sx}, {sy}, {sz}")
 
             x: float = sx + self.step_x
             y: float = sy + self.step_y
 
-            ex = ex + self.step_x
-
             while True:
                 z = self.calculate_z_value(x, y)
-                self.extracted_points_x.append(ex)
-                self.extracted_points_y.append(ey)
+                self.extracted_points_x.append(x)
+                self.extracted_points_y.append(y)
                 self.extracted_points_z.append(z)
                 # logger.debug(f"Calculated point: {x}, {y}, {z}")
 
                 x = x + self.step_x
                 y = y + self.step_y
-
-                ex = ex + self.step_x
 
                 if (x > self.max_x) or (x < self.min_x):
                     break
