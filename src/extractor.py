@@ -105,11 +105,14 @@ class Extractor:
         self.tile_y: int = 30
         self.num_of_tiles: int = self.tile_x * self.tile_y
         self.tiles: list[Tile] = []
+
         self.start_points: PointList = []
         self.end_points: PointList = []
+
         self.extracted_points_x: list[float] = []
         self.extracted_points_y: list[float] = []
         self.extracted_points_z: list[float] = []
+
         self.original_points_x: list[float] = []
         self.original_points_y: list[float] = []
         self.original_points_z: list[float] = []
@@ -135,6 +138,9 @@ class Extractor:
 
         self.original_dx: float = 0.0
         self.original_dy: float = 0.0
+
+        self.row_dx: float = 0.0
+        self.row_dy: float = 0.0
 
     def read_file(self, filename: str):
         logger.info(f"Reading file: {filename}")
@@ -229,13 +235,10 @@ class Extractor:
             if column == 1:
                 self.start_points.append((x, y, z))
             elif column == 2:
-                dx: float = x - self.start_points[-1][0]
-                dy: float = y - self.start_points[-1][1]
-                logger.debug(f"Steps from points: dx: {dx}, dy: {dy}")
-
                 if self.original_dx == 0.0:
-                    self.original_dx = dx
-                    self.original_dy = dy
+                    self.original_dx = x - self.start_points[0][0]
+                    self.original_dy = y - self.start_points[0][1]
+                    logger.debug(f"Steps from points: dx: {self.original_dx}, dy: {self.original_dy}")
             elif column == self.last_col:
                 self.end_points.append((x, y, z))
 
@@ -255,15 +258,15 @@ class Extractor:
 
         logger.debug(f"Number of starting points: {len(self.start_points)}")
 
-        total_dx: float = self.end_points[0][0] - self.start_points[0][0]
-        total_dy: float = self.end_points[0][1] - self.start_points[0][1]
-        logger.debug(f"Total dx: {total_dx}")
-        logger.debug(f"Total dy: {total_dy}")
+        self.row_dx = self.end_points[0][0] - self.start_points[0][0]
+        self.row_dy = self.end_points[0][1] - self.start_points[0][1]
+        logger.debug(f"Row dx: {self.row_dx}")
+        logger.debug(f"Row dy: {self.row_dy}")
 
-        self.calculated_angle = math.atan(total_dy / total_dx)
+        self.calculated_angle = math.degrees(math.atan(self.row_dy / self.row_dx))
         logger.debug(f"Calculated angle: {self.calculated_angle}")
 
-        self.step_y = math.sin(math.radians(self.angle)) * self.step_x
+        self.step_y = math.tan(math.radians(self.angle)) * self.step_x
 
         logger.debug(f"X step: {self.step_x} m, Y step: {self.step_y} m")
 
@@ -285,7 +288,7 @@ class Extractor:
             self.extracted_points_x.append(ex)
             self.extracted_points_y.append(ey)
             self.extracted_points_z.append(sz)
-            logger.debug(f"Starting point: {sx}, {sy}, {sz}")
+            # logger.debug(f"Starting point: {sx}, {sy}, {sz}")
 
             x: float = sx + self.step_x
             y: float = sy + self.step_y
@@ -297,7 +300,7 @@ class Extractor:
                 self.extracted_points_x.append(ex)
                 self.extracted_points_y.append(ey)
                 self.extracted_points_z.append(z)
-                logger.debug(f"Calculated point: {x}, {y}, {z}")
+                # logger.debug(f"Calculated point: {x}, {y}, {z}")
 
                 x = x + self.step_x
                 y = y + self.step_y
@@ -306,10 +309,11 @@ class Extractor:
 
                 if (x > self.max_x) or (x < self.min_x):
                     break
-                elif (y > self.max_y) or (y < self.min_y):
+
+                if (y > self.max_y) or (y < self.min_y):
                     break
 
-            logger.debug(f"----------")
+            # logger.debug(f"----------")
 
     def save_extracted_points(self):
         with open("extracted_points.csv", "w") as f:
