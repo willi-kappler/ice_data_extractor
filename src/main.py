@@ -38,11 +38,16 @@ def plot_data(ex: extractor.Extractor):
         ax1.plot(x, y, "go")  # green circle
 
     fig.colorbar(cmap, ax=ax1)
+    ax1.tick_params(axis="x", labelrotation=90)
 
     ax2.tricontourf(x2, y2, z2, cmap="RdBu_r")
     fig.colorbar(cmap, ax=ax2)
+    ax2.tick_params(axis="x", labelrotation=90)
 
-    plt.savefig("plot.png")
+    fig.set_size_inches(10.0, 15.0)
+    fig.tight_layout()
+
+    plt.savefig("plot.png", dpi=100)
 
 
 def main():
