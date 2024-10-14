@@ -1,6 +1,5 @@
 
 # Python imports:
-import sys
 import logging
 import math
 
@@ -175,7 +174,6 @@ class Extractor:
             s = s * 0.5
             logger.debug(f"Scale: {s}, x: {x}, y: {y}, d1: {d1}, d2: {d2}, d3: {d3}, d4: {d4}")
 
-
         z = (z1 * f1) + (z2 * f2) + (z3 * f3) + (z4 * f4) / f_sum
 
         return z
@@ -195,7 +193,7 @@ class Extractor:
                 self.extracted_points_x.append(x)
                 self.extracted_points_y.append(y)
 
-                z: float = self.calculate_z_value(x, y)
+                z = self.calculate_z_value(x, y)
 
                 self.extracted_points_z.append(z)
 
