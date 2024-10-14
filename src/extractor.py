@@ -13,14 +13,20 @@ PointList = list[tuple[(float, float, float)]]
 
 
 class Extractor:
-    def __init__(self):
-        self.start_x: float = -1293737.074199
-        self.start_y: float = 124083.532967
+    def __init__(self, angle: float, step: float):
+        self.start_x: float = 0.0
+        self.start_y: float = 0.0
 
-        self.dx1: float = -6.643222999991849
-        self.dy1: float = 18.864452999987407
-        self.dx2: float = 471.61132899997756
-        self.dy2: float = 166.08056600000418
+        # Column (yellow to green)
+        self.dx1: float = 0.0
+        self.dy1: float = 0.0
+
+        # Row (yellow to yellow)
+        self.dx2: float = 0.0
+        self.dy2: float = 0.0
+
+        self.user_angle: float = angle
+        self.user_step: float = step
 
         self.num_of_rows: int = 36
         self.num_of_cols: int = 895
@@ -36,24 +42,16 @@ class Extractor:
         self.original_points_y: list[float] = []
         self.original_points_z: list[float] = []
 
-        self.min_x: float = sys.float_info.max
-        self.min_y: float = self.min_x
-        self.min_z: float = self.min_x
-
-        self.max_x: float = -self.min_x
-        self.max_y: float = -self.min_y
-        self.max_z: float = -self.min_z
-
-        self.len_x: float = 0.0
-        self.len_y: float = 0.0
-        self.len_z: float = 0.0
-
-        self.data_dx1: float
-        self.data_dx2: float
-        self.column_length: float
-        self.data_dy1: float
-        self.data_dy2: float
-        self.row_length: float
+        self.data_dx1: float = 0.0
+        self.data_dx2: float = 0.0
+        self.total_column_dx: float = 0.0
+        self.total_column_dy: float = 0.0
+        self.total_column_length: float = 0.0
+        self.data_dy1: float = 0.0
+        self.data_dy2: float = 0.0
+        self.total_row_dx: float = 0.0
+        self.total_row_dy: float = 0.0
+        self.total_row_length: float = 0.0
 
         self.kd_tree = KDTree([(0.0, 0.0), (0.0, 0.0)])
 
@@ -61,8 +59,6 @@ class Extractor:
         logger.info(f"Reading file: {filename}")
 
         with open(filename, "r") as f:
-            self.find_min_max_values(f)
-            f.seek(0)  # rewind file
             self.read_data_points(f)
 
         self.extract_points()
@@ -92,39 +88,24 @@ class Extractor:
 
             yield (x, y, z, column, row)
 
-    def find_min_max_values(self, file):
-        for (x, y, z, _, _) in self.yield_values_from_file(file):
-            if x < self.min_x:
-                self.min_x = x
-            elif x > self.max_x:
-                self.max_x = x
-
-            if y < self.min_y:
-                self.min_y = y
-            elif y > self.max_y:
-                self.max_y = y
-
-            if z < self.min_z:
-                self.min_z = z
-            elif z > self.max_z:
-                self.max_z = z
-
-        self.len_x = self.max_x - self.min_x
-        self.len_y = self.max_y - self.min_y
-        self.len_z = self.max_z - self.min_z
-
-        logger.debug(f"Min values: x: {self.min_x}, y: {self.min_y}, z: {self.min_z}")
-        logger.debug(f"Max values: x: {self.max_x}, y: {self.max_y}, z: {self.max_z}")
-        logger.debug(f"Length values: x: {self.len_x}, y: {self.len_y}, z: {self.len_z}")
-
     def read_data_points(self, file):
         for (x, y, z, column, row) in self.yield_values_from_file(file):
             if column == 1:
                 self.start_points.append((x, y, z))
+                if row == 1:
+                    self.start_x = x
+                    self.start_y = y
             elif (column == 2) and (row == 1):
                 self.data_dx1 = x - self.start_points[0][0]
                 self.data_dy1 = y - self.start_points[0][1]
+                step_length1: float = math.hypot(self.data_dx1, self.data_dy1)
+                factor: float = self.user_step / step_length1
                 logger.debug(f"Column step: dx: {self.data_dx1}, dy: {self.data_dy1}")
+                logger.debug(f"Column step length: {step_length1}, factor: {factor}")
+
+                self.dx1 = self.data_dx1 * factor
+                self.dy1 = self.data_dy1 * factor
+                logger.debug(f"dx1: {self.dx1}, dy1: {self.dy1}")
             elif column == self.num_of_cols:
                 self.end_points.append((x, y, z))
 
@@ -136,77 +117,90 @@ class Extractor:
         self.data_dy2 = self.start_points[1][1] - self.start_points[0][1]
         logger.debug(f"Row step: dx: {self.data_dx2}, dy: {self.data_dy2}")
 
+        # Rotate row vector:
+        angle_rad = math.radians(self.user_angle)
+        sin_angle = math.sin(angle_rad)
+        cos_angle = math.cos(angle_rad)
+        self.dx2 = (self.data_dx2 * cos_angle) - (self.data_dy2 * sin_angle)
+        self.dy2 = (self.data_dx2 * sin_angle) + (self.data_dy2 * cos_angle)
+        logger.debug(f"dx2: {self.dx2}, dy2: {self.dy2}")
+
         logger.debug(f"Number of starting points: {len(self.start_points)}")
 
-        self.row_dx = self.end_points[0][0] - self.start_points[0][0]
-        self.row_dy = self.end_points[0][1] - self.start_points[0][1]
-        self.row_length = math.hypot(self.row_dx, self.row_dy)
-        logger.debug(f"Total row dx: {self.row_dx}, dy: {self.row_dy}")
-        logger.debug(f"Total row length: {self.row_length}")
+        self.total_column_dx = self.end_points[0][0] - self.start_points[0][0]
+        self.total_column_dy = self.end_points[0][1] - self.start_points[0][1]
+        self.total_column_length = math.hypot(self.total_column_dx, self.total_column_dy)
+        logger.debug(f"Total column dx: {self.total_column_dx}, dy: {self.total_column_dy}")
+        logger.debug(f"Total column length: {self.total_column_length}")
 
-        self.column_dx = self.start_points[-1][0] - self.start_points[0][0]
-        self.column_dy = self.start_points[-1][1] - self.start_points[0][1]
-        self.column_length = math.hypot(self.column_dx, self.column_dy)
-        logger.debug(f"Total column dx: {self.column_dx}, dy: {self.column_dy}")
-        logger.debug(f"Total column length: {self.column_length}")
+        self.total_row_dx = self.start_points[-1][0] - self.start_points[0][0]
+        self.total_row_dy = self.start_points[-1][1] - self.start_points[0][1]
+        self.total_row_length = math.hypot(self.total_row_dx, self.total_row_dy)
+        logger.debug(f"Total row dx: {self.total_row_dx}, dy: {self.total_row_dy}")
+        logger.debug(f"Total row length: {self.total_row_length}")
 
         self.kd_tree = KDTree(list(zip(self.original_points_x, self.original_points_y)))
 
-        self.calculated_angle = math.degrees(math.atan(self.row_dy / self.row_dx))
-        logger.debug(f"Calculated row angle: {self.calculated_angle}")
+    def calculate_z_value(self, x: float, y: float) -> float:
+        (distances, indices) = self.kd_tree.query((x, y), k=4)
+
+        d1: float = distances[0]
+        d2: float = distances[1]
+        d3: float = distances[2]
+        d4: float = distances[3]
+
+        i1: int = indices[0]
+        i2: int = indices[1]
+        i3: int = indices[2]
+        i4: int = indices[3]
+
+        z1: float = self.original_points_z[i1]
+        z2: float = self.original_points_z[i2]
+        z3: float = self.original_points_z[i3]
+        z4: float = self.original_points_z[i4]
+
+        s: float = 1.0
+
+        while True:
+            f1: float = math.exp(-d1 * s)
+            f2: float = math.exp(-d2 * s)
+            f3: float = math.exp(-d3 * s)
+            f4: float = math.exp(-d4 * s)
+
+            f_sum = f1 + f2 + f3 + f4
+
+            if f_sum > 0.0:
+                break
+
+            s = s * 0.5
+            logger.debug(f"Scale: {s}, x: {x}, y: {y}, d1: {d1}, d2: {d2}, d3: {d3}, d4: {d4}")
+
+
+        z = (z1 * f1) + (z2 * f2) + (z3 * f3) + (z4 * f4) / f_sum
+
+        return z
 
     def extract_points(self):
         x: float = self.start_x
         y: float = self.start_y
         z: float = 0.0
 
-        for i in range(self.num_of_rows):
-            x = self.start_x + (float(i) * self.dx2)
-            y = self.start_y + (float(i) * self.dy2)
-            for _ in range(self.num_of_cols):
+        num_of_cols: int = math.floor(self.total_column_length / self.user_step)
+        logger.debug(f"Final number of columns: {num_of_cols}")
+
+        for i in range(num_of_cols):
+            x = self.start_x + (float(i) * self.dx1)
+            y = self.start_y + (float(i) * self.dy1)
+            for _ in range(self.num_of_rows):
                 self.extracted_points_x.append(x)
                 self.extracted_points_y.append(y)
 
-                (distances, indices) = self.kd_tree.query((x, y), k=4)
-
-                d1: float = distances[0]
-                d2: float = distances[1]
-                d3: float = distances[2]
-                d4: float = distances[3]
-
-                i1: int = indices[0]
-                i2: int = indices[1]
-                i3: int = indices[2]
-                i4: int = indices[3]
-
-                z1: float = self.original_points_z[i1]
-                z2: float = self.original_points_z[i2]
-                z3: float = self.original_points_z[i3]
-                z4: float = self.original_points_z[i4]
-
-                s: float = 1.0
-
-                while True:
-                    f1: float = math.exp(-d1 * s)
-                    f2: float = math.exp(-d2 * s)
-                    f3: float = math.exp(-d3 * s)
-                    f4: float = math.exp(-d4 * s)
-
-                    f_sum = f1 + f2 + f3 + f4
-
-                    if f_sum > 0.0:
-                        break
-
-                    s = s * 0.5
-                    logger.debug(f"Scale: {s}, x: {x}, y: {y}, d1: {d1}, d2: {d2}, d3: {d3}, d4: {d4}")
-
-
-                z = (z1 * f1) + (z2 * f2) + (z3 * f3) + (z4 * f4) / f_sum
+                z: float = self.calculate_z_value(x, y)
 
                 self.extracted_points_z.append(z)
 
-                x = x + self.dx1
-                y = y + self.dy1
+                x = x + self.dx2
+                y = y + self.dy2
 
     def save_extracted_points(self):
         with open("extracted_points.csv", "w") as f:

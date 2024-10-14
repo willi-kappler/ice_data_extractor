@@ -61,7 +61,7 @@ def main():
 
     filename = (sys.argv[1])
 
-    ex = extractor.Extractor()
+    ex = extractor.Extractor(0.0, 500.0)
     ex.read_file(filename)
 
     plot_data(ex)
