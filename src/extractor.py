@@ -52,6 +52,7 @@ class Extractor:
         self.total_row_dy: float = 0.0
         self.total_row_length: float = 0.0
 
+        self.step_length1: float = 0.0
         self.kd_tree = KDTree([(0.0, 0.0), (0.0, 0.0)])
 
     def read_file(self, filename: str):
@@ -87,7 +88,31 @@ class Extractor:
 
             yield (x, y, z, column, row)
 
+    def set_dx1_dy1(self):
+        factor: float = self.user_step / self.step_length1
+        logger.debug(f"Column step factor: {factor}")
+
+        self.dx1 = self.data_dx1 * factor
+        self.dy1 = self.data_dy1 * factor
+        logger.debug(f"dx1: {self.dx1}, dy1: {self.dy1}")
+
+    def set_dx2_dy2(self):
+        # Rotate row vector:
+        angle_rad = math.radians(self.user_angle)
+        sin_angle = math.sin(angle_rad)
+        cos_angle = math.cos(angle_rad)
+        self.dx2 = (self.data_dx2 * cos_angle) - (self.data_dy2 * sin_angle)
+        self.dy2 = (self.data_dx2 * sin_angle) + (self.data_dy2 * cos_angle)
+        logger.debug(f"dx2: {self.dx2}, dy2: {self.dy2}")
+
     def read_data_points(self, file):
+        self.original_points_x = []
+        self.original_points_y = []
+        self.original_points_z = []
+
+        self.start_points = []
+        self.end_points = []
+
         for (x, y, z, column, row) in self.yield_values_from_file(file):
             if column == 1:
                 self.start_points.append((x, y, z))
@@ -97,14 +122,10 @@ class Extractor:
             elif (column == 2) and (row == 1):
                 self.data_dx1 = x - self.start_points[0][0]
                 self.data_dy1 = y - self.start_points[0][1]
-                step_length1: float = math.hypot(self.data_dx1, self.data_dy1)
-                factor: float = self.user_step / step_length1
                 logger.debug(f"Column step: dx: {self.data_dx1}, dy: {self.data_dy1}")
-                logger.debug(f"Column step length: {step_length1}, factor: {factor}")
-
-                self.dx1 = self.data_dx1 * factor
-                self.dy1 = self.data_dy1 * factor
-                logger.debug(f"dx1: {self.dx1}, dy1: {self.dy1}")
+                self.step_length1: float = math.hypot(self.data_dx1, self.data_dy1)
+                logger.debug(f"Column step length: {self.step_length1}")
+                self.set_dx1_dy1()
             elif column == self.num_of_cols:
                 self.end_points.append((x, y, z))
 
@@ -112,19 +133,13 @@ class Extractor:
             self.original_points_y.append(y)
             self.original_points_z.append(z)
 
+        logger.debug(f"Number of starting points: {len(self.start_points)}")
+
         self.data_dx2 = self.start_points[1][0] - self.start_points[0][0]
         self.data_dy2 = self.start_points[1][1] - self.start_points[0][1]
         logger.debug(f"Row step: dx: {self.data_dx2}, dy: {self.data_dy2}")
 
-        # Rotate row vector:
-        angle_rad = math.radians(self.user_angle)
-        sin_angle = math.sin(angle_rad)
-        cos_angle = math.cos(angle_rad)
-        self.dx2 = (self.data_dx2 * cos_angle) - (self.data_dy2 * sin_angle)
-        self.dy2 = (self.data_dx2 * sin_angle) + (self.data_dy2 * cos_angle)
-        logger.debug(f"dx2: {self.dx2}, dy2: {self.dy2}")
-
-        logger.debug(f"Number of starting points: {len(self.start_points)}")
+        self.set_dx2_dy2()
 
         self.total_column_dx = self.end_points[0][0] - self.start_points[0][0]
         self.total_column_dy = self.end_points[0][1] - self.start_points[0][1]
@@ -183,18 +198,21 @@ class Extractor:
         y: float = self.start_y
         z: float = 0.0
 
+        self.extracted_points_x = []
+        self.extracted_points_y = []
+        self.extracted_points_z = []
+
         num_of_cols: int = math.floor(self.total_column_length / self.user_step)
         logger.debug(f"Final number of columns: {num_of_cols}")
 
         for i in range(num_of_cols):
             x = self.start_x + (float(i) * self.dx1)
             y = self.start_y + (float(i) * self.dy1)
+
             for _ in range(self.num_of_rows):
                 self.extracted_points_x.append(x)
                 self.extracted_points_y.append(y)
-
                 z = self.calculate_z_value(x, y)
-
                 self.extracted_points_z.append(z)
 
                 x = x + self.dx2
@@ -202,11 +220,7 @@ class Extractor:
 
     def save_extracted_points(self):
         with open("extracted_points.csv", "w") as f:
-            num_points = len(self.extracted_points_x)
-            for i in range(num_points):
-                x = self.extracted_points_x[i]
-                y = self.extracted_points_y[i]
-                z = self.extracted_points_z[i]
+            for (x, y, z) in zip(self.extracted_points_x, self.extracted_points_y, self.extracted_points_z):
                 f.write(f"{x}, {y}, {z}\n")
 
 
