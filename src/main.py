@@ -14,9 +14,6 @@ import extractor
 logger = logging.getLogger(__name__)
 
 
-# Call this Python script with:
-# python3 src/main.py -1.23 -500.0 assets/Rutford_DELORES_TWTT_2D_201617_500m_spaced
-
 def plot_data(ex: extractor.Extractor):
     x1 = ex.original_points_x
     y1 = ex.original_points_y
