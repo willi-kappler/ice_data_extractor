@@ -12,7 +12,7 @@ PointList = list[tuple[(float, float, float)]]
 
 
 class Extractor:
-    def __init__(self, angle: float, step: float):
+    def __init__(self):
         self.start_x: float = 0.0
         self.start_y: float = 0.0
 
@@ -24,8 +24,8 @@ class Extractor:
         self.dx2: float = 0.0
         self.dy2: float = 0.0
 
-        self.user_angle: float = angle
-        self.user_step: float = step
+        self.user_angle: float = 0.0
+        self.user_step: float = 500.0
 
         self.num_of_rows: int = 36
         self.num_of_cols: int = 895
@@ -55,6 +55,14 @@ class Extractor:
         self.step_length1: float = 0.0
         self.kd_tree = KDTree([(0.0, 0.0), (0.0, 0.0)])
 
+    def set_angle(self, angle: float):
+        self.user_angle = angle
+        self.set_dx2_dy2()
+
+    def set_step(self, step: float):
+        self.user_step = step
+        self.set_dx1_dy1()
+
     def read_file(self, filename: str):
         logger.info(f"Reading file: {filename}")
 
@@ -62,7 +70,7 @@ class Extractor:
             self.read_data_points(f)
 
         self.extract_points()
-        self.save_extracted_points()
+        # self.save_extracted_points()
 
     def yield_values_from_file(self, file):
         for line in file:
