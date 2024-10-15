@@ -9,12 +9,12 @@ import time
 import matplotlib.pyplot as plt
 
 # Local imports
-import extractor
+import ice_extractor
 
 logger = logging.getLogger(__name__)
 
 
-def plot_data(ex: extractor.Extractor):
+def plot_data(ex: ice_extractor.Extractor):
     x1 = ex.original_points_x
     y1 = ex.original_points_y
     z1 = ex.original_points_z
@@ -58,7 +58,7 @@ def main():
 
     filename = (sys.argv[1])
 
-    ex = extractor.Extractor()
+    ex = ice_extractor.Extractor()
     ex.read_file(filename)
 
     plot_data(ex)
