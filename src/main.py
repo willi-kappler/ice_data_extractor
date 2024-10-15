@@ -32,7 +32,7 @@ def plot_data(ex: extractor.Extractor):
     cmap = ax1.tricontourf(x1, y1, z1, cmap="RdBu_r")
 
     for (x, y, _) in ex.start_points:
-        ax1.plot(x, y, "yo")  # yellow corcle
+        ax1.plot(x, y, "yo")  # yellow circle
 
     for (x, y, _) in ex.end_points:
         ax1.plot(x, y, "go")  # green circle
