@@ -225,8 +225,8 @@ class IceExtractor:
                 x = x + self.dx2
                 y = y + self.dy2
 
-    def save_extracted_points(self):
-        with open("extracted_points.csv", "w") as f:
+    def save_extracted_points(self, filename: str):
+        with open(filename, "w") as f:
             for (x, y, z) in zip(self.extracted_points_x, self.extracted_points_y, self.extracted_points_z):
                 f.write(f"{x}, {y}, {z}\n")
 
