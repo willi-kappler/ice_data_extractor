@@ -4,6 +4,10 @@
 import matplotlib.pyplot as plt
 
 
+# Local imports
+import ice_extractor as ie
+
+
 class IcePlotter:
     def __init__(self):
         self.x1: list[float] = []
@@ -14,13 +18,27 @@ class IcePlotter:
         self.y2: list[float] = []
         self.z2: list[float] = []
 
-        self.start_points: list[tuple[(float, float, float)]] = []
-        self.end_points: list[tuple[(float, float, float)]] = []
+        self.start_points: ie.PointList = []
+        self.end_points: ie.PointList = []
 
-        #self.fig = None
-        #self.ax1 = None
-        #self.ax2 = None
-        #self.cmap = None
+        # self.fig = None
+        # self.ax1 = None
+        # self.ax2 = None
+        # self.cmap = None
+
+    def get_data_from_extractor(self, extractor: ie.IceExtractor):
+        self.set_original(
+            extractor.original_points_x,
+            extractor.original_points_y,
+            extractor.original_points_z)
+
+        self.set_extracted(
+            extractor.extracted_points_x,
+            extractor.extracted_points_y,
+            extractor.extracted_points_z)
+
+        self.set_start_points(extractor.start_points)
+        self.set_end_points(extractor.end_points)
 
     def set_original(self, x1: list[float], y1: list[float], z1: list[float]):
         self.x1 = x1
@@ -32,10 +50,10 @@ class IcePlotter:
         self.y2 = y2
         self.z2 = z2
 
-    def set_start_point(self, start_points):
+    def set_start_points(self, start_points: ie.PointList):
         self.start_points = start_points
 
-    def set_end_points(self, end_points):
+    def set_end_points(self, end_points: ie.PointList):
         self.end_points = end_points
 
     def plot_original(self):
@@ -65,7 +83,7 @@ class IcePlotter:
         self.fig.set_size_inches(10.0, 15.0)
         self.fig.tight_layout()
 
-    def save_figure(self, filename):
+    def save_figure(self, filename: str):
         plt.savefig(filename, dpi=100)
 
 

@@ -5,46 +5,11 @@ import logging
 import sys
 import time
 
-# External imports
-import matplotlib.pyplot as plt
-
 # Local imports
-import ice_extractor
+import ice_extractor as ie
+import ice_plotter as ip
 
 logger = logging.getLogger(__name__)
-
-
-def plot_data(ex: ice_extractor.Extractor):
-    x1 = ex.original_points_x
-    y1 = ex.original_points_y
-    z1 = ex.original_points_z
-
-    x2 = ex.extracted_points_x
-    y2 = ex.extracted_points_y
-    z2 = ex.extracted_points_z
-
-    fig, (ax1, ax2) = plt.subplots(2)
-    fig.suptitle("Heatmaps of measured points")
-
-    cmap = ax1.tricontourf(x1, y1, z1, cmap="RdBu_r")
-
-    for (x, y, _) in ex.start_points:
-        ax1.plot(x, y, "yo")  # yellow circle
-
-    for (x, y, _) in ex.end_points:
-        ax1.plot(x, y, "go")  # green circle
-
-    fig.colorbar(cmap, ax=ax1)
-    ax1.tick_params(axis="x", labelrotation=90)
-
-    ax2.tricontourf(x2, y2, z2, cmap="RdBu_r")
-    fig.colorbar(cmap, ax=ax2)
-    ax2.tick_params(axis="x", labelrotation=90)
-
-    fig.set_size_inches(10.0, 15.0)
-    fig.tight_layout()
-
-    plt.savefig("plot.png", dpi=100)
 
 
 def main():
@@ -58,10 +23,13 @@ def main():
 
     filename = (sys.argv[1])
 
-    ex = ice_extractor.Extractor()
+    ex = ie.IceExtractor()
     ex.read_file(filename)
 
-    plot_data(ex)
+    plotter = ip.IcePlotter()
+    plotter.get_data_from_extractor(ex)
+    plotter.plot_both()
+    plotter.save_figure("plot.png")
 
     end = time.time()
     duration = end - start

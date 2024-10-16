@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 PointList = list[tuple[(float, float, float)]]
 
 
-class Extractor:
+class IceExtractor:
     def __init__(self):
         self.start_x: float = 0.0
         self.start_y: float = 0.0
@@ -70,7 +70,6 @@ class Extractor:
             self.read_data_points(f)
 
         self.extract_points()
-        # self.save_extracted_points()
 
     def yield_values_from_file(self, file):
         for line in file:
@@ -131,7 +130,7 @@ class Extractor:
                 self.data_dx1 = x - self.start_points[0][0]
                 self.data_dy1 = y - self.start_points[0][1]
                 logger.debug(f"Column step: dx: {self.data_dx1}, dy: {self.data_dy1}")
-                self.step_length1: float = math.hypot(self.data_dx1, self.data_dy1)
+                self.step_length1 = math.hypot(self.data_dx1, self.data_dy1)
                 logger.debug(f"Column step length: {self.step_length1}")
                 self.set_dx1_dy1()
             elif column == self.num_of_cols:
