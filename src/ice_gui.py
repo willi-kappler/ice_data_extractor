@@ -58,20 +58,22 @@ class IceGUI():
         lf1.pack(side=tk.TOP, anchor=tk.E)
         tk.Label(lf1, text="Step: ").pack(side=tk.LEFT, padx=5, pady=5)
         step_input = tk.Entry(lf1)
+        step_input.insert(0, "500.0")
         step_input.pack(side=tk.LEFT, padx=5, pady=5)
 
         lf2 = tk.Frame(left_frame)
         lf2.pack(side=tk.TOP, anchor=tk.E)
         tk.Label(lf2, text="Angle: ").pack(side=tk.LEFT, padx=5, pady=5)
         angle_input = tk.Entry(lf2)
+        angle_input.bind("<Return>", self.change_arrow_text)
         angle_input.pack(side=tk.LEFT, padx=5, pady=5)
 
         canvas = tk.Canvas(left_frame, width=100, height=100, bg="black")
         canvas.create_oval(0, 0, 100, 100, fill="white")
-        angle_arrow = canvas.create_line(0, 50, 100, 50, arrow=tk.LAST, 
+        angle_arrow = canvas.create_line(0, 50, 100, 50, arrow=tk.LAST,
             width=10, fill="red", arrowshape=(20, 20, 10))
-        canvas.bind("<B1-Motion>", self.change_arrow)
-        canvas.bind("<Button-1>", self.change_arrow)
+        canvas.bind("<B1-Motion>", self.change_arrow_mouse)
+        canvas.bind("<Button-1>", self.change_arrow_mouse)
         canvas.pack(side=tk.TOP, padx=5, pady=5)
 
         extract_button = tk.Button(left_frame, text="Extract", command=self.extract_data)
@@ -101,12 +103,12 @@ class IceGUI():
     def run(self):
         self.root.mainloop()
 
-    def change_arrow(self, event):
+    def change_arrow_mouse(self, event):
         r: float = 50.0
         x: float = event.x - r
         y: float = event.y - r
-        l: float = math.hypot(x, y)
-        angle: float = math.asin(y/l)
+        length: float = math.hypot(x, y)
+        angle: float = math.asin(y/length)
         angle_d: float = math.degrees(angle)
 
         y1 = r * (1.0 - math.sin(angle))
@@ -131,8 +133,55 @@ class IceGUI():
         self.angle_input.delete(0, tk.END)
         self.angle_input.insert(0, angle_text)
 
+    def change_arrow_text(self, event=None):
+        angle_t: str = self.angle_input.get()
+
+        try:
+            angle_d: float = float(angle_t)
+
+            if (angle_d < 0.0) or (angle_d > 360.0):
+                mb.showerror("Angle value error", f"The angle must be between 0.0 and 360.0, current value: {angle_t}")
+            else:
+                r: float = 50.0
+                angle: float = math.radians(angle_d)
+                x: float = math.cos(angle)
+                y: float = math.sin(angle)
+
+                x1: float = r * (1.0 - x)
+                y1: float = r * (1.0 - y)
+                x2: float = r * (1.0 + x)
+                y2: float = r * (1.0 + y)
+
+                self.canvas.coords(self.angle_arrow, x1, y1, x2, y2)
+                self.angle = angle_d
+
+        except ValueError:
+            mb.showerror("Angle value error", f"This is not a valid floating point number: {angle_t}")
+
+    def check_empty_data(self) -> bool:
+        if self.extractor.is_empty():
+            mb.showerror("No data", "No data has been loaded. Please load a datafile first!")
+            return False
+        else:
+            return True
+
     def extract_data(self):
-        pass
+        if self.check_empty_data():
+            step_t = self.step_input.get()
+
+            try:
+                step_f: float = float(step_t)
+                self.extractor.set_step(step_f)
+                self.extractor.set_angle(self.angle)
+                self.extractor.extract_points()
+                self.plotter.set_extracted(
+                    self.extractor.extracted_points_x,
+                    self.extractor.extracted_points_y,
+                    self.extractor.extracted_points_z)
+                self.plotter.plot_extracted()
+                self.data_modified = True
+            except ValueError:
+                mb.showerror("Step value error", f"This is not a valid floating point number: {step_t}")
 
     def ask_confirm(self) -> bool:
         if self.data_modified:
@@ -151,13 +200,13 @@ class IceGUI():
 
     def save_data(self, event=None):
         filename: str = fd.asksaveasfilename()
-        if filename:
+        if self.check_empty_data() and filename:
             self.extractor.save_extracted_points(filename)
             self.data_modified = False
 
     def save_plot(self):
         filename: str = fd.asksaveasfilename()
-        if filename:
+        if self.check_empty_data() and filename:
             self.plotter.save_figure(filename)
 
     def exit_app(self, event=None):
