@@ -195,8 +195,9 @@ class IceGUI():
             filename: str = fd.askopenfilename()
             if filename:
                 self.extractor.read_file(filename)
-                self.data_modified = True
                 self.plotter.get_data_from_extractor(self.extractor)
+                self.plotter.plot_both()
+                self.data_modified = True
 
     def save_data(self, event=None):
         filename: str = fd.asksaveasfilename()
