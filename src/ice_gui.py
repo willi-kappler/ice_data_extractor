@@ -107,34 +107,29 @@ class IceGUI():
         y: float = event.y - r
         l: float = math.hypot(x, y)
         angle: float = math.asin(y/l)
+        angle_d: float = math.degrees(angle)
+
+        y1 = r * (1.0 - math.sin(angle))
+        y2 = r * (1.0 + math.sin(angle))
 
         if x < 0.0:
-            if y < 0.0:
-                x1 = r * (1.0 + math.cos(angle))
-                y1 = r * (1.0 - math.sin(angle))
-                x2 = r * (1.0 - math.cos(angle))
-                y2 = r * (1.0 + math.sin(angle))
-                self.canvas.coords(self.angle_arrow, x1, y1, x2, y2)
-            else:
-                x1 = r * (1.0 + math.cos(angle))
-                y1 = r * (1.0 - math.sin(angle))
-                x2 = r * (1.0 - math.cos(angle))
-                y2 = r * (1.0 + math.sin(angle))
-                self.canvas.coords(self.angle_arrow, x1, y1, x2, y2)
-        else:
-            if y < 0.0:
-                x1 = r * (1.0 - math.cos(angle))
-                y1 = r * (1.0 - math.sin(angle))
-                x2 = r * (1.0 + math.cos(angle))
-                y2 = r * (1.0 + math.sin(angle))
-                self.canvas.coords(self.angle_arrow, x1, y1, x2, y2)
-            else:
-                x1 = r * (1.0 - math.cos(angle))
-                y1 = r * (1.0 - math.sin(angle))
-                x2 = r * (1.0 + math.cos(angle))
-                y2 = r * (1.0 + math.sin(angle))
-                self.canvas.coords(self.angle_arrow, x1, y1, x2, y2)
+            x1 = r * (1.0 + math.cos(angle))
+            x2 = r * (1.0 - math.cos(angle))
 
+            angle_d = 180.0 - angle_d
+        else:
+            x1 = r * (1.0 - math.cos(angle))
+            x2 = r * (1.0 + math.cos(angle))
+
+            if angle_d < 0.0:
+                angle_d = 360.0 + angle_d
+
+        angle_text: str = f"{angle_d}"
+        self.angle = angle_d
+
+        self.canvas.coords(self.angle_arrow, x1, y1, x2, y2)
+        self.angle_input.delete(0, tk.END)
+        self.angle_input.insert(0, angle_text)
 
     def extract_data(self):
         pass
