@@ -1,5 +1,6 @@
 
 # Python std lib
+import math
 import tkinter as tk
 import tkinter.filedialog as fd
 import tkinter.messagebox as mb
@@ -65,6 +66,14 @@ class IceGUI():
         angle_input = tk.Entry(lf2)
         angle_input.pack(side=tk.LEFT, padx=5, pady=5)
 
+        canvas = tk.Canvas(left_frame, width=100, height=100, bg="black")
+        canvas.create_oval(0, 0, 100, 100, fill="white")
+        angle_arrow = canvas.create_line(0, 50, 100, 50, arrow=tk.LAST, 
+            width=10, fill="red", arrowshape=(20, 20, 10))
+        canvas.bind("<B1-Motion>", self.change_arrow)
+        canvas.bind("<Button-1>", self.change_arrow)
+        canvas.pack(side=tk.TOP, padx=5, pady=5)
+
         extract_button = tk.Button(left_frame, text="Extract", command=self.extract_data)
         extract_button.pack(side=tk.TOP, padx=5, pady=5)
 
@@ -80,6 +89,9 @@ class IceGUI():
         self.root = root
         self.step_input = step_input
         self.angle_input = angle_input
+        self.canvas = canvas
+        self.angle_arrow = angle_arrow
+        self.angle: float = 0.0
 
         self.extractor = ie.IceExtractor()
         self.plotter = ip.IcePlotter()
@@ -88,6 +100,41 @@ class IceGUI():
 
     def run(self):
         self.root.mainloop()
+
+    def change_arrow(self, event):
+        r: float = 50.0
+        x: float = event.x - r
+        y: float = event.y - r
+        l: float = math.hypot(x, y)
+        angle: float = math.asin(y/l)
+
+        if x < 0.0:
+            if y < 0.0:
+                x1 = r * (1.0 + math.cos(angle))
+                y1 = r * (1.0 - math.sin(angle))
+                x2 = r * (1.0 - math.cos(angle))
+                y2 = r * (1.0 + math.sin(angle))
+                self.canvas.coords(self.angle_arrow, x1, y1, x2, y2)
+            else:
+                x1 = r * (1.0 + math.cos(angle))
+                y1 = r * (1.0 - math.sin(angle))
+                x2 = r * (1.0 - math.cos(angle))
+                y2 = r * (1.0 + math.sin(angle))
+                self.canvas.coords(self.angle_arrow, x1, y1, x2, y2)
+        else:
+            if y < 0.0:
+                x1 = r * (1.0 - math.cos(angle))
+                y1 = r * (1.0 - math.sin(angle))
+                x2 = r * (1.0 + math.cos(angle))
+                y2 = r * (1.0 + math.sin(angle))
+                self.canvas.coords(self.angle_arrow, x1, y1, x2, y2)
+            else:
+                x1 = r * (1.0 - math.cos(angle))
+                y1 = r * (1.0 - math.sin(angle))
+                x2 = r * (1.0 + math.cos(angle))
+                y2 = r * (1.0 + math.sin(angle))
+                self.canvas.coords(self.angle_arrow, x1, y1, x2, y2)
+
 
     def extract_data(self):
         pass
