@@ -55,11 +55,16 @@ class IceExtractor:
         self.step_length1: float = 0.0
         self.kd_tree = KDTree([(0.0, 0.0), (0.0, 0.0)])
 
+    def is_empty(self) -> bool:
+        return not self.start_points
+
     def set_angle(self, angle: float):
+        logger.debug(f"Set user angle to {angle}")
         self.user_angle = angle
         self.set_dx2_dy2()
 
     def set_step(self, step: float):
+        logger.debug(f"Set user step to {step}")
         self.user_step = step
         self.set_dx1_dy1()
 
