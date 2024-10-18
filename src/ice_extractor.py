@@ -13,25 +13,16 @@ PointList = list[tuple[(float, float, float)]]
 
 class IceExtractor:
     def __init__(self):
-        self.start_x: float = 0.0
-        self.start_y: float = 0.0
-
-        # Column (yellow to green)
-        self.dx1: float = 0.0
-        self.dy1: float = 0.0
-
-        # Row (yellow to yellow)
-        self.dx2: float = 0.0
-        self.dy2: float = 0.0
-
-        self.user_angle: float = 0.0
-        self.user_step: float = 500.0
+        self.angle: float = 0.0
+        self.step: float = 500.0
 
         self.num_of_rows: int = 36
         self.num_of_cols: int = 895
 
         self.start_points: PointList = []
         self.end_points: PointList = []
+
+        self.first_row: PointList = []
 
         self.extracted_points_x: list[float] = []
         self.extracted_points_y: list[float] = []
@@ -41,13 +32,9 @@ class IceExtractor:
         self.original_points_y: list[float] = []
         self.original_points_z: list[float] = []
 
-        self.data_dx1: float = 0.0
-        self.data_dx2: float = 0.0
         self.total_column_dx: float = 0.0
         self.total_column_dy: float = 0.0
         self.total_column_length: float = 0.0
-        self.data_dy1: float = 0.0
-        self.data_dy2: float = 0.0
         self.total_row_dx: float = 0.0
         self.total_row_dy: float = 0.0
         self.total_row_length: float = 0.0
@@ -57,16 +44,6 @@ class IceExtractor:
 
     def is_empty(self) -> bool:
         return not self.start_points
-
-    def set_angle(self, angle: float):
-        logger.debug(f"Set user angle to {angle}")
-        self.user_angle = angle
-        self.set_dx2_dy2()
-
-    def set_step(self, step: float):
-        logger.debug(f"Set user step to {step}")
-        self.user_step = step
-        self.set_dx1_dy1()
 
     def read_file(self, filename: str):
         logger.info(f"Reading file: {filename}")
@@ -100,23 +77,6 @@ class IceExtractor:
 
             yield (x, y, z, column, row)
 
-    def set_dx1_dy1(self):
-        factor: float = self.user_step / self.step_length1
-        logger.debug(f"Column step factor: {factor}")
-
-        self.dx1 = self.data_dx1 * factor
-        self.dy1 = self.data_dy1 * factor
-        logger.debug(f"dx1: {self.dx1}, dy1: {self.dy1}")
-
-    def set_dx2_dy2(self):
-        # Rotate row vector:
-        angle_rad = math.radians(self.user_angle)
-        sin_angle = math.sin(angle_rad)
-        cos_angle = math.cos(angle_rad)
-        self.dx2 = (self.data_dx2 * cos_angle) - (self.data_dy2 * sin_angle)
-        self.dy2 = (self.data_dx2 * sin_angle) + (self.data_dy2 * cos_angle)
-        logger.debug(f"dx2: {self.dx2}, dy2: {self.dy2}")
-
     def read_data_points(self, file):
         self.original_points_x = []
         self.original_points_y = []
@@ -125,33 +85,22 @@ class IceExtractor:
         self.start_points = []
         self.end_points = []
 
+        self.first_row = []
+
         for (x, y, z, column, row) in self.yield_values_from_file(file):
             if column == 1:
                 self.start_points.append((x, y, z))
-                if row == 1:
-                    self.start_x = x
-                    self.start_y = y
-            elif (column == 2) and (row == 1):
-                self.data_dx1 = x - self.start_points[0][0]
-                self.data_dy1 = y - self.start_points[0][1]
-                logger.debug(f"Column step: dx: {self.data_dx1}, dy: {self.data_dy1}")
-                self.step_length1 = math.hypot(self.data_dx1, self.data_dy1)
-                logger.debug(f"Column step length: {self.step_length1}")
-                self.set_dx1_dy1()
             elif column == self.num_of_cols:
                 self.end_points.append((x, y, z))
+
+            if row == 1:
+                self.first_row.append((x, y, z))
 
             self.original_points_x.append(x)
             self.original_points_y.append(y)
             self.original_points_z.append(z)
 
         logger.debug(f"Number of starting points: {len(self.start_points)}")
-
-        self.data_dx2 = self.start_points[1][0] - self.start_points[0][0]
-        self.data_dy2 = self.start_points[1][1] - self.start_points[0][1]
-        logger.debug(f"Row step: dx: {self.data_dx2}, dy: {self.data_dy2}")
-
-        self.set_dx2_dy2()
 
         self.total_column_dx = self.end_points[0][0] - self.start_points[0][0]
         self.total_column_dy = self.end_points[0][1] - self.start_points[0][1]
@@ -164,6 +113,17 @@ class IceExtractor:
         self.total_row_length = math.hypot(self.total_row_dx, self.total_row_dy)
         logger.debug(f"Total row dx: {self.total_row_dx}, dy: {self.total_row_dy}")
         logger.debug(f"Total row length: {self.total_row_length}")
+
+        angle = math.asin(-self.total_row_dy / self.total_row_length)
+        angle_d: float = math.degrees(angle)
+
+        if self.total_row_dx < 0.0:
+            angle_d = 180.0 - angle_d
+        else:
+            if angle_d < 0.0:
+                angle_d = 360.0 + angle_d
+
+        self.angle = angle_d
 
         self.kd_tree = KDTree(list(zip(self.original_points_x, self.original_points_y)))
 
@@ -185,50 +145,46 @@ class IceExtractor:
         z3: float = self.original_points_z[i3]
         z4: float = self.original_points_z[i4]
 
-        s: float = 1.0
+        f1: float = math.exp(-d1 * 0.5)
+        f2: float = math.exp(-d2 * 0.5)
+        f3: float = math.exp(-d3 * 0.5)
+        f4: float = math.exp(-d4 * 0.5)
 
-        while True:
-            f1: float = math.exp(-d1 * s)
-            f2: float = math.exp(-d2 * s)
-            f3: float = math.exp(-d3 * s)
-            f4: float = math.exp(-d4 * s)
+        f_sum = f1 + f2 + f3 + f4
 
-            f_sum = f1 + f2 + f3 + f4
-
-            if f_sum > 0.0:
-                break
-
-            s = s * 0.5
-            logger.debug(f"Scale: {s}, x: {x}, y: {y}, d1: {d1}, d2: {d2}, d3: {d3}, d4: {d4}")
-
-        z = (z1 * f1) + (z2 * f2) + (z3 * f3) + (z4 * f4) / f_sum
-
-        return z
+        if f_sum == 0.0:
+            return math.nan
+        else:
+            z = (z1 * f1) + (z2 * f2) + (z3 * f3) + (z4 * f4) / f_sum
+            return z
 
     def extract_points(self):
-        x: float = self.start_x
-        y: float = self.start_y
+        x: float = 0.0
+        y: float = 0.0
         z: float = 0.0
+
+        num_of_rows: int = math.floor(self.total_row_length / self.step)
+
+        angle_r: float = math.radians(self.angle)
+        dx: float = self.step * math.cos(angle_r)
+        dy: float = -self.step * math.sin(angle_r)
+
+        logger.debug(f"{dx=}, {dy=}, {num_of_rows=}")
 
         self.extracted_points_x = []
         self.extracted_points_y = []
         self.extracted_points_z = []
 
-        num_of_cols: int = math.floor(self.total_column_length / self.user_step)
-        logger.debug(f"Final number of columns: {num_of_cols}")
+        for (xr, yr, _) in self.first_row:
+            for i in range(num_of_rows):
+                x = xr + (float(i) * dx)
+                y = yr + (float(i) * dy)
 
-        for i in range(num_of_cols):
-            x = self.start_x + (float(i) * self.dx1)
-            y = self.start_y + (float(i) * self.dy1)
-
-            for _ in range(self.num_of_rows):
-                self.extracted_points_x.append(x)
-                self.extracted_points_y.append(y)
                 z = self.calculate_z_value(x, y)
-                self.extracted_points_z.append(z)
-
-                x = x + self.dx2
-                y = y + self.dy2
+                if not math.isnan(z):
+                    self.extracted_points_x.append(x)
+                    self.extracted_points_y.append(y)
+                    self.extracted_points_z.append(z)
 
     def save_extracted_points(self, filename: str):
         with open(filename, "w") as f:
