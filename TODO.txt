@@ -1,7 +1,5 @@
 # TODO:
 
-- Maybe use quadtree for tiles ?
-- Use argument parser.
-- Add more options via command line arguments.
-
+- Show min and max roughness on plot
+- Show units in labels.
 
