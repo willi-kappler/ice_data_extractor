@@ -207,7 +207,7 @@ class IceGUI():
     def save_data(self, event=None):
         filename: str = fd.asksaveasfilename()
         if self.check_empty_data() and filename:
-            self.extractor.save_extracted_points(filename)
+            self.extractor.save_roughness(filename)
             self.data_modified = False
 
     def exit_app(self, event=None):
