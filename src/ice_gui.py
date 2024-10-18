@@ -180,6 +180,7 @@ class IceGUI():
                 self.extractor.extract_points()
                 self.plot_extracted()
                 self.data_modified = True
+                mb.showinfo("Extraction finished", "All roughness points have been calculated.")
             except ValueError:
                 mb.showerror("Step value error", f"This is not a valid floating point number: {step_t}")
 
@@ -209,6 +210,7 @@ class IceGUI():
         if self.check_empty_data() and filename:
             self.extractor.save_roughness(filename)
             self.data_modified = False
+            mb.showinfo("Data saved", f"All roughness points have been saved to: '{filename}'")
 
     def exit_app(self, event=None):
         if self.ask_confirm():
