@@ -49,7 +49,7 @@ class IceGUI():
         root.bind_all("<Control-s>", self.save_data)
         root.bind_all("<Control-q>", self.exit_app)
 
-        left_frame = tk.Frame(root, bg="red", bd=3, relief=tk.GROOVE)
+        left_frame = tk.Frame(root, bd=3, relief=tk.GROOVE)
         left_frame.pack(side=tk.LEFT, anchor=tk.N)
 
         lf1 = tk.Frame(left_frame)
@@ -64,13 +64,14 @@ class IceGUI():
         tk.Label(lf2, text="Angle: ").pack(side=tk.LEFT, padx=5, pady=5)
         angle_input = tk.Entry(lf2)
         angle_input.bind("<Return>", self.change_arrow_text)
+        angle_input.bind("<FocusOut>", self.change_arrow_text)
         angle_input.insert(0, "0.0")
         angle_input.pack(side=tk.LEFT, padx=5, pady=5)
 
         arrow_canvas = tk.Canvas(left_frame, width=100, height=100, bg="black")
         arrow_canvas.create_oval(0, 0, 100, 100, fill="white")
         angle_arrow = arrow_canvas.create_line(0, 50, 100, 50, arrow=tk.LAST,
-            width=10, fill="red", arrowshape=(20, 20, 10))
+            width=10, fill="blue", arrowshape=(20, 20, 10))
         arrow_canvas.bind("<B1-Motion>", self.change_arrow_mouse)
         arrow_canvas.bind("<Button-1>", self.change_arrow_mouse)
         arrow_canvas.pack(side=tk.TOP, padx=5, pady=5)
@@ -109,6 +110,7 @@ class IceGUI():
         self.extractor = ie.IceExtractor()
 
         self.data_modified: bool = False
+        self.needs_colorbar: bool = True
 
     def run(self):
         self.root.mainloop()
@@ -121,27 +123,16 @@ class IceGUI():
         angle: float = math.asin(y/length)
         angle_d: float = math.degrees(angle)
 
-        y1 = r * (1.0 - math.sin(angle))
-        y2 = r * (1.0 + math.sin(angle))
-
         if x < 0.0:
-            x1 = r * (1.0 + math.cos(angle))
-            x2 = r * (1.0 - math.cos(angle))
-
             angle_d = 180.0 - angle_d
         else:
-            x1 = r * (1.0 - math.cos(angle))
-            x2 = r * (1.0 + math.cos(angle))
-
             if angle_d < 0.0:
                 angle_d = 360.0 + angle_d
 
-        angle_text: str = f"{angle_d}"
         self.angle = angle_d
-
-        self.arrow_canvas.coords(self.angle_arrow, x1, y1, x2, y2)
         self.angle_input.delete(0, tk.END)
-        self.angle_input.insert(0, angle_text)
+        self.angle_input.insert(0, f"{self.angle}")
+        self.change_arrow()
 
     def change_arrow_text(self, event=None):
         angle_t: str = self.angle_input.get()
@@ -152,21 +143,24 @@ class IceGUI():
             if (angle_d < 0.0) or (angle_d > 360.0):
                 mb.showerror("Angle value error", f"The angle must be between 0.0 and 360.0, current value: {angle_t}")
             else:
-                r: float = 50.0
-                angle: float = math.radians(angle_d)
-                x: float = math.cos(angle)
-                y: float = math.sin(angle)
-
-                x1: float = r * (1.0 - x)
-                y1: float = r * (1.0 - y)
-                x2: float = r * (1.0 + x)
-                y2: float = r * (1.0 + y)
-
-                self.arrow_canvas.coords(self.angle_arrow, x1, y1, x2, y2)
                 self.angle = angle_d
+                self.change_arrow()
 
         except ValueError:
             mb.showerror("Angle value error", f"This is not a valid floating point number: {angle_t}")
+
+    def change_arrow(self):
+        r: float = 50.0
+        angle: float = math.radians(self.angle)
+        x: float = math.cos(angle)
+        y: float = math.sin(angle)
+
+        x1: float = r * (1.0 - x)
+        y1: float = r * (1.0 - y)
+        x2: float = r * (1.0 + x)
+        y2: float = r * (1.0 + y)
+
+        self.arrow_canvas.coords(self.angle_arrow, x1, y1, x2, y2)
 
     def check_empty_data(self) -> bool:
         if self.extractor.is_empty():
@@ -181,8 +175,8 @@ class IceGUI():
 
             try:
                 step_f: float = float(step_t)
-                self.extractor.set_step(step_f)
-                self.extractor.set_angle(self.angle)
+                self.extractor.step = step_f
+                self.extractor.angle = self.angle
                 self.extractor.extract_points()
                 self.plot_extracted()
                 self.data_modified = True
@@ -191,7 +185,7 @@ class IceGUI():
 
     def ask_confirm(self) -> bool:
         if self.data_modified:
-            res: bool = mb.askyesno("Confirm", "The data is not saved. Do you want to continue ?")
+            res: bool = mb.askyesno("Confirm", "The data is not saved. Do you want to continue (changes will be lost) ?")
             return res
         else:
             return True
@@ -203,7 +197,12 @@ class IceGUI():
                 self.extractor.read_file(filename)
                 self.plot_original()
                 self.plot_extracted()
+                self.angle = self.extractor.angle
+                self.angle_input.delete(0, tk.END)
+                self.angle_input.insert(0, f"{self.angle}")
+                self.change_arrow()
                 self.data_modified = True
+                self.needs_colorbar = False
 
     def save_data(self, event=None):
         filename: str = fd.asksaveasfilename()
@@ -216,6 +215,7 @@ class IceGUI():
             self.root.destroy()
 
     def plot_original(self):
+        self.top_ax.clear()
         self.color_map = self.top_ax.tricontourf(
             self.extractor.original_points_x,
             self.extractor.original_points_y,
@@ -228,17 +228,20 @@ class IceGUI():
         for (x, y, _) in self.extractor.end_points:
             self.top_ax.plot(x, y, "go")
 
-        self.plot_figure.colorbar(self.color_map, ax=self.top_ax)
+        if self.needs_colorbar:
+            self.plot_figure.colorbar(self.color_map, ax=self.top_ax)
         self.top_ax.tick_params(axis="x", labelrotation=90)
 
     def plot_extracted(self):
+        self.bottom_ax.clear()
         self.bottom_ax.tricontourf(
             self.extractor.extracted_points_x,
             self.extractor.extracted_points_y,
             self.extractor.extracted_points_z,
             cmap="RdBu_r")
 
-        self.plot_figure.colorbar(self.color_map, ax=self.bottom_ax)
+        if self.needs_colorbar:
+            self.plot_figure.colorbar(self.color_map, ax=self.bottom_ax)
         self.bottom_ax.tick_params(axis="x", labelrotation=90)
 
         self.plot_canvas.draw()
