@@ -155,6 +155,14 @@ class IceExtractor:
         num_of_samples2: float = float(num_of_samples)
         num_of_samples3: int = round(num_of_samples / 2)
 
+        min_rough: float = self.original_points_z[0]
+        min_x: float = 0.0
+        min_y: float = 0.0
+
+        max_rough: float = 0.0
+        max_x: float = 0.0
+        max_y: float = 0.0
+
         for (xr, yr, _) in self.first_row:
             current_row_x: list[float] = []
             current_row_y: list[float] = []
@@ -183,10 +191,23 @@ class IceExtractor:
                 for i in range(num_z_vals - num_of_samples + 1):
                     std_sum: float = sum(z_std_div[i:i + num_of_samples])
                     rough: float = math.sqrt(std_sum / num_of_samples2)
-                    self.row_roughness.append((col,
-                        current_row_x[i + num_of_samples3], current_row_y[i + num_of_samples3], rough))
+                    x = current_row_x[i + num_of_samples3]
+                    y = current_row_y[i + num_of_samples3]
+                    self.row_roughness.append((col, x, y, rough))
+
+                    if rough < min_rough:
+                        min_rough = rough
+                        min_x = x
+                        min_y = y
+                    elif rough > max_rough:
+                        max_rough = rough
+                        max_x = x
+                        max_y = y
 
             col = col + 1
+
+        logger.debug(f"Min roughness: {min_rough} at {min_x}, {min_y}")
+        logger.debug(f"Max roughness: {max_rough} at {max_x}, {max_y}")
 
     def save_roughness(self, filename: str):
         with open(filename, "w") as f:
