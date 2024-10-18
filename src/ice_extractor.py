@@ -32,6 +32,8 @@ class IceExtractor:
         self.original_points_y: list[float] = []
         self.original_points_z: list[float] = []
 
+        self.row_roughness: list[tuple[(int, float, float, float)]] = []
+
         self.total_column_dx: float = 0.0
         self.total_column_dy: float = 0.0
         self.total_column_length: float = 0.0
@@ -145,7 +147,19 @@ class IceExtractor:
         self.extracted_points_y = []
         self.extracted_points_z = []
 
+        self.row_roughness = []
+
+        # Calculation of roughness:
+        col: int = 0
+        num_of_samples: int = 5
+        num_of_samples2: float = float(num_of_samples)
+        num_of_samples3: int = round(num_of_samples / 2)
+
         for (xr, yr, _) in self.first_row:
+            current_row_x: list[float] = []
+            current_row_y: list[float] = []
+            current_row_z: list[float] = []
+
             for i in range(num_of_rows):
                 x = xr + (float(i) * dx)
                 y = yr + (float(i) * dy)
@@ -156,9 +170,27 @@ class IceExtractor:
                     self.extracted_points_y.append(y)
                     self.extracted_points_z.append(z)
 
-    def save_extracted_points(self, filename: str):
+                    current_row_x.append(x)
+                    current_row_y.append(y)
+                    current_row_z.append(z)
+
+            num_z_vals: int = len(current_row_z)
+
+            if num_z_vals > num_of_samples:
+                z_mean: float = sum(current_row_z) / float(num_z_vals)
+                z_std_div: list[float] = [math.pow(val_z - z_mean, 2.0) for val_z in current_row_z]
+
+                for i in range(num_z_vals - num_of_samples + 1):
+                    std_sum: float = sum(z_std_div[i:i + num_of_samples])
+                    rough: float = math.sqrt(std_sum / num_of_samples2)
+                    self.row_roughness.append((col,
+                        current_row_x[i + num_of_samples3], current_row_y[i + num_of_samples3], rough))
+
+            col = col + 1
+
+    def save_roughness(self, filename: str):
         with open(filename, "w") as f:
-            for (x, y, z) in zip(self.extracted_points_x, self.extracted_points_y, self.extracted_points_z):
-                f.write(f"{x}, {y}, {z}\n")
+            for (c, x, y, r) in self.row_roughness:
+                f.write(f"{c}, {x}, {y}, {r}\n")
 
 
