@@ -4,7 +4,7 @@ import logging
 import math
 
 # External imports:
-from scipy.spatial import KDTree
+from scipy.interpolate import LinearNDInterpolator
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,6 @@ class IceExtractor:
         self.total_row_length: float = 0.0
 
         self.step_length1: float = 0.0
-        self.kd_tree = KDTree([(0.0, 0.0), (0.0, 0.0)])
 
     def is_empty(self) -> bool:
         return not self.start_points
@@ -125,38 +124,9 @@ class IceExtractor:
 
         self.angle = angle_d
 
-        self.kd_tree = KDTree(list(zip(self.original_points_x, self.original_points_y)))
-
-    def calculate_z_value(self, x: float, y: float) -> float:
-        (distances, indices) = self.kd_tree.query((x, y), k=4)
-
-        d1: float = distances[0]
-        d2: float = distances[1]
-        d3: float = distances[2]
-        d4: float = distances[3]
-
-        i1: int = indices[0]
-        i2: int = indices[1]
-        i3: int = indices[2]
-        i4: int = indices[3]
-
-        z1: float = self.original_points_z[i1]
-        z2: float = self.original_points_z[i2]
-        z3: float = self.original_points_z[i3]
-        z4: float = self.original_points_z[i4]
-
-        f1: float = math.exp(-d1 * 0.5)
-        f2: float = math.exp(-d2 * 0.5)
-        f3: float = math.exp(-d3 * 0.5)
-        f4: float = math.exp(-d4 * 0.5)
-
-        f_sum = f1 + f2 + f3 + f4
-
-        if f_sum == 0.0:
-            return math.nan
-        else:
-            z = (z1 * f1) + (z2 * f2) + (z3 * f3) + (z4 * f4) / f_sum
-            return z
+        self.interpolator = LinearNDInterpolator(
+            list(zip(self.original_points_x, self.original_points_y)),
+            self.original_points_z)
 
     def extract_points(self):
         x: float = 0.0
@@ -180,7 +150,7 @@ class IceExtractor:
                 x = xr + (float(i) * dx)
                 y = yr + (float(i) * dy)
 
-                z = self.calculate_z_value(x, y)
+                z = self.interpolator(x, y)
                 if not math.isnan(z):
                     self.extracted_points_x.append(x)
                     self.extracted_points_y.append(y)
