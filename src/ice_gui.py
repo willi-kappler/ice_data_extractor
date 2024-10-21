@@ -1,6 +1,7 @@
 
 # Python imports
 import math
+import logging
 import tkinter as tk
 import tkinter.filedialog as fd
 import tkinter.messagebox as mb
@@ -11,6 +12,8 @@ from matplotlib.figure import Figure
 
 # Local imports
 import ice_extractor as ie
+
+logger = logging.getLogger(__name__)
 
 
 class IceGUI():
@@ -54,14 +57,14 @@ class IceGUI():
 
         lf1 = tk.Frame(left_frame)
         lf1.pack(side=tk.TOP, anchor=tk.E)
-        tk.Label(lf1, text="Step: ").pack(side=tk.LEFT, padx=5, pady=5)
+        tk.Label(lf1, text="Step [m]: ").pack(side=tk.LEFT, padx=5, pady=5)
         step_input = tk.Entry(lf1)
         step_input.insert(0, "500.0")
         step_input.pack(side=tk.LEFT, padx=5, pady=5)
 
         lf2 = tk.Frame(left_frame)
         lf2.pack(side=tk.TOP, anchor=tk.E)
-        tk.Label(lf2, text="Angle: ").pack(side=tk.LEFT, padx=5, pady=5)
+        tk.Label(lf2, text="Angle [°]: ").pack(side=tk.LEFT, padx=5, pady=5)
         angle_input = tk.Entry(lf2)
         angle_input.bind("<Return>", self.change_arrow_text)
         angle_input.bind("<FocusOut>", self.change_arrow_text)
@@ -85,9 +88,6 @@ class IceGUI():
         plot_frame = tk.Frame(right_frame)
         plot_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         plot_figure = Figure(figsize=(5, 4), dpi=100)
-        plot_figure.suptitle("Heatmaps of measured points")
-        top_ax = plot_figure.add_subplot(2, 1, 1)
-        bottom_ax = plot_figure.add_subplot(2, 1, 2)
         plot_canvas = FigureCanvasTkAgg(plot_figure, master=plot_frame)
         plot_canvas.draw()
         plot_toolbar = NavigationToolbar2Tk(plot_canvas, plot_frame, pack_toolbar=False)
@@ -104,13 +104,10 @@ class IceGUI():
 
         self.plot_figure = plot_figure
         self.plot_canvas = plot_canvas
-        self.top_ax = top_ax
-        self.bottom_ax = bottom_ax
 
         self.extractor = ie.IceExtractor()
 
         self.data_modified: bool = False
-        self.needs_colorbar: bool = True
 
     def run(self):
         self.root.mainloop()
@@ -178,7 +175,7 @@ class IceGUI():
                 self.extractor.step = step_f
                 self.extractor.angle = self.angle
                 self.extractor.extract_points()
-                self.plot_extracted()
+                self.plot_data()
                 self.data_modified = True
                 mb.showinfo("Extraction finished", "All roughness points have been calculated.")
             except ValueError:
@@ -196,8 +193,7 @@ class IceGUI():
             filename: str = fd.askopenfilename()
             if filename:
                 self.extractor.read_file(filename)
-                self.plot_original()
-                self.plot_extracted()
+                self.plot_data()
                 self.angle = self.extractor.angle
                 self.angle_input.delete(0, tk.END)
                 self.angle_input.insert(0, f"{self.angle}")
@@ -216,35 +212,35 @@ class IceGUI():
         if self.ask_confirm():
             self.root.destroy()
 
-    def plot_original(self):
-        self.top_ax.clear()
-        self.color_map = self.top_ax.tricontourf(
+    def plot_data(self):
+        self.plot_figure.clear()
+        top_ax = self.plot_figure.add_subplot(2, 1, 1)
+        bottom_ax = self.plot_figure.add_subplot(2, 1, 2, sharex=top_ax, sharey=top_ax)
+        self.plot_figure.suptitle("Heatmaps of measured points")
+
+        self.color_map = top_ax.tricontourf(
             self.extractor.original_points_x,
             self.extractor.original_points_y,
             self.extractor.original_points_z,
             cmap="RdBu_r")
 
         for (x, y, _) in self.extractor.start_points:
-            self.top_ax.plot(x, y, "yo")
+            top_ax.plot(x, y, "yo")
 
         for (x, y, _) in self.extractor.end_points:
-            self.top_ax.plot(x, y, "go")
+            top_ax.plot(x, y, "go")
 
-        if self.needs_colorbar:
-            self.plot_figure.colorbar(self.color_map, ax=self.top_ax)
-        self.top_ax.tick_params(axis="x", labelrotation=90)
+        self.plot_figure.colorbar(self.color_map, ax=top_ax)
+        top_ax.tick_params(axis="x", labelrotation=90)
 
-    def plot_extracted(self):
-        self.bottom_ax.clear()
-        self.bottom_ax.tricontourf(
+        bottom_ax.tricontourf(
             self.extractor.extracted_points_x,
             self.extractor.extracted_points_y,
             self.extractor.extracted_points_z,
             cmap="RdBu_r")
 
-        if self.needs_colorbar:
-            self.plot_figure.colorbar(self.color_map, ax=self.bottom_ax)
-        self.bottom_ax.tick_params(axis="x", labelrotation=90)
+        self.plot_figure.colorbar(self.color_map, ax=bottom_ax)
+        bottom_ax.tick_params(axis="x", labelrotation=90)
 
         self.plot_canvas.draw()
 
