@@ -1,6 +1,4 @@
 # TODO:
 
-- Show min and max roughness on plot.
-- Show units in labels.
-- Use axis limits for both plots.
+- Show min and max roughness on plot
 

@@ -2,6 +2,7 @@
 # Python imports:
 import logging
 import math
+import sys
 
 # External imports:
 from scipy.interpolate import LinearNDInterpolator
@@ -42,6 +43,14 @@ class IceExtractor:
         self.total_row_length: float = 0.0
 
         self.step_length1: float = 0.0
+
+        self.min_rough: float = sys.float_info.max
+        self.min_x: float = 0.0
+        self.min_y: float = 0.0
+
+        self.max_rough: float = 0.0
+        self.max_x: float = 0.0
+        self.max_y: float = 0.0
 
     def is_empty(self) -> bool:
         return not self.start_points
@@ -155,13 +164,13 @@ class IceExtractor:
         num_of_samples2: float = float(num_of_samples)
         num_of_samples3: int = round(num_of_samples / 2)
 
-        min_rough: float = self.original_points_z[0]
-        min_x: float = 0.0
-        min_y: float = 0.0
+        self.min_rough = sys.float_info.max
+        self.min_x = 0.0
+        self.min_y = 0.0
 
-        max_rough: float = 0.0
-        max_x: float = 0.0
-        max_y: float = 0.0
+        self.max_rough = 0.0
+        self.max_x = 0.0
+        self.max_y = 0.0
 
         for (xr, yr, _) in self.first_row:
             current_row_x: list[float] = []
@@ -195,19 +204,19 @@ class IceExtractor:
                     y = current_row_y[i + num_of_samples3]
                     self.row_roughness.append((col, x, y, rough))
 
-                    if rough < min_rough:
-                        min_rough = rough
-                        min_x = x
-                        min_y = y
-                    elif rough > max_rough:
-                        max_rough = rough
-                        max_x = x
-                        max_y = y
+                    if rough < self.min_rough:
+                        self.min_rough = rough
+                        self.min_x = x
+                        self.min_y = y
+                    elif rough > self.max_rough:
+                        self.max_rough = rough
+                        self.max_x = x
+                        self.max_y = y
 
             col = col + 1
 
-        logger.debug(f"Min roughness: {min_rough} at {min_x}, {min_y}")
-        logger.debug(f"Max roughness: {max_rough} at {max_x}, {max_y}")
+        logger.debug(f"Min roughness: {self.min_rough} at {self.min_x}, {self.min_y}")
+        logger.debug(f"Max roughness: {self.max_rough} at {self.max_x}, {self.max_y}")
 
     def save_roughness(self, filename: str):
         with open(filename, "w") as f:
