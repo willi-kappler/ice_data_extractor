@@ -224,11 +224,17 @@ class IceGUI():
             self.extractor.original_points_z,
             cmap="RdBu_r")
 
+        # Plot start and end points:
         for (x, y, _) in self.extractor.start_points:
             top_ax.plot(x, y, "yo")
 
         for (x, y, _) in self.extractor.end_points:
             top_ax.plot(x, y, "go")
+
+        # Plot min / max roughness points:
+        top_ax.plot(self.extractor.min_x, self.extractor.min_y, "rv", mec="k")
+        top_ax.plot(self.extractor.max_x, self.extractor.max_y, "r^", mec="k")
+
 
         self.plot_figure.colorbar(self.color_map, ax=top_ax)
         top_ax.tick_params(axis="x", labelrotation=90)
