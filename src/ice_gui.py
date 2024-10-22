@@ -189,6 +189,8 @@ class IceGUI():
                 self.extractor.extract_points()
                 self.plot_data()
                 self.data_modified = True
+                self.min_rough_label.config(text=f"Min. roughness: {self.extractor.min_rough:.2f}")
+                self.max_rough_label.config(text=f"Max. roughness: {self.extractor.max_rough:.2f}")
                 self.status_label.config(text="Ready.")
             except ValueError:
                 mb.showerror("Step value error", f"This is not a valid floating point number: {step_t}")
@@ -236,11 +238,11 @@ class IceGUI():
         bottom_ax = self.plot_figure.add_subplot(2, 1, 2, sharex=top_ax, sharey=top_ax)
         self.plot_figure.suptitle("Heatmaps of measured points")
 
-        self.color_map = top_ax.tricontourf(
+        color_map = top_ax.tricontourf(
             self.extractor.original_points_x,
             self.extractor.original_points_y,
             self.extractor.original_points_z,
-            cmap="RdBu_r")
+            cmap="winter")
 
         # Plot start and end points:
         for (x, y, _) in self.extractor.start_points:
@@ -254,16 +256,25 @@ class IceGUI():
         top_ax.plot(self.extractor.max_x, self.extractor.max_y, "r^", mec="k")
 
 
-        self.plot_figure.colorbar(self.color_map, ax=top_ax)
+        self.plot_figure.colorbar(color_map, ax=top_ax)
         top_ax.tick_params(axis="x", labelrotation=45)
 
-        bottom_ax.tricontourf(
-            self.extractor.extracted_points_x,
-            self.extractor.extracted_points_y,
-            self.extractor.extracted_points_z,
-            cmap="RdBu_r")
+        rough_x = []
+        rough_y = []
+        rough_z = []
 
-        self.plot_figure.colorbar(self.color_map, ax=bottom_ax)
+        for (_, x, y, z) in self.extractor.row_roughness:
+            rough_x.append(x)
+            rough_y.append(y)
+            rough_z.append(z)
+
+        color_map = bottom_ax.tricontourf(
+            rough_x,
+            rough_y,
+            rough_z,
+            cmap="cool")
+
+        self.plot_figure.colorbar(color_map, ax=bottom_ax)
         bottom_ax.tick_params(axis="x", labelrotation=45)
 
         self.plot_canvas.draw()
