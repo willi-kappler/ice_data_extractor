@@ -5,6 +5,7 @@ import logging
 import tkinter as tk
 import tkinter.filedialog as fd
 import tkinter.messagebox as mb
+from tkinter import ttk
 
 # External imports
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -71,6 +72,11 @@ class IceGUI():
         angle_input.insert(0, "0.0")
         angle_input.pack(side=tk.LEFT, padx=5, pady=5)
 
+        min_rough_label = tk.Label(left_frame, text="Min. roughness: ###")
+        min_rough_label.pack(side=tk.TOP, padx=5, pady=5)
+        max_rough_label = tk.Label(left_frame, text="Max. roughness: ###")
+        max_rough_label.pack(side=tk.TOP, padx=5, pady=5)
+
         arrow_canvas = tk.Canvas(left_frame, width=100, height=100, bg="black")
         arrow_canvas.create_oval(0, 0, 100, 100, fill="white")
         angle_arrow = arrow_canvas.create_line(0, 50, 100, 50, arrow=tk.LAST,
@@ -78,6 +84,9 @@ class IceGUI():
         arrow_canvas.bind("<B1-Motion>", self.change_arrow_mouse)
         arrow_canvas.bind("<Button-1>", self.change_arrow_mouse)
         arrow_canvas.pack(side=tk.TOP, padx=5, pady=5)
+
+        progress_bar = ttk.Progressbar(left_frame, mode="indeterminate", length=200)
+        progress_bar.pack(side=tk.TOP, padx=5, pady=5)
 
         extract_button = tk.Button(left_frame, text="Extract", command=self.extract_data)
         extract_button.pack(side=tk.TOP, padx=5, pady=5)
@@ -99,11 +108,15 @@ class IceGUI():
         self.step_input = step_input
         self.angle_input = angle_input
         self.arrow_canvas = arrow_canvas
+        self.progress_bar = progress_bar
         self.angle_arrow = angle_arrow
         self.angle: float = 0.0
 
         self.plot_figure = plot_figure
         self.plot_canvas = plot_canvas
+
+        self.min_rough_label = min_rough_label
+        self.max_rough_label = max_rough_label
 
         self.extractor = ie.IceExtractor()
 
@@ -192,14 +205,21 @@ class IceGUI():
         if self.ask_confirm():
             filename: str = fd.askopenfilename()
             if filename:
-                self.extractor.read_file(filename)
-                self.plot_data()
-                self.angle = self.extractor.angle
-                self.angle_input.delete(0, tk.END)
-                self.angle_input.insert(0, f"{self.angle}")
-                self.change_arrow()
-                self.data_modified = True
-                self.needs_colorbar = False
+                try:
+                    self.progress_bar.start()
+                    self.extractor.read_file(filename)
+                    self.plot_data()
+                    self.angle = self.extractor.angle
+                    self.angle_input.delete(0, tk.END)
+                    self.angle_input.insert(0, f"{self.angle:.2f}")
+                    self.change_arrow()
+                    self.data_modified = True
+                    self.min_rough_label.config(text=f"Min. roughness: {self.extractor.min_rough:.2f}")
+                    self.max_rough_label.config(text=f"Max. roughness: {self.extractor.max_rough:.2f}")
+                    self.progress_bar.stop()
+                except Exception as err:
+                    mb.showerror("IO Error", f"An error occured while reading the file: '{err}'")
+
 
     def save_data(self, event=None):
         filename: str = fd.asksaveasfilename()
@@ -237,7 +257,7 @@ class IceGUI():
 
 
         self.plot_figure.colorbar(self.color_map, ax=top_ax)
-        top_ax.tick_params(axis="x", labelrotation=90)
+        top_ax.tick_params(axis="x", labelrotation=45)
 
         bottom_ax.tricontourf(
             self.extractor.extracted_points_x,
@@ -246,7 +266,7 @@ class IceGUI():
             cmap="RdBu_r")
 
         self.plot_figure.colorbar(self.color_map, ax=bottom_ax)
-        bottom_ax.tick_params(axis="x", labelrotation=90)
+        bottom_ax.tick_params(axis="x", labelrotation=45)
 
         self.plot_canvas.draw()
 
