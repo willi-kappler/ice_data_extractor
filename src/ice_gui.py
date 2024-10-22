@@ -5,7 +5,6 @@ import logging
 import tkinter as tk
 import tkinter.filedialog as fd
 import tkinter.messagebox as mb
-from tkinter import ttk
 
 # External imports
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -54,7 +53,7 @@ class IceGUI():
         root.bind_all("<Control-q>", self.exit_app)
 
         left_frame = tk.Frame(root, bd=3, relief=tk.GROOVE)
-        left_frame.pack(side=tk.LEFT, anchor=tk.N)
+        left_frame.pack(side=tk.LEFT, anchor=tk.N, fill=tk.Y)
 
         lf1 = tk.Frame(left_frame)
         lf1.pack(side=tk.TOP, anchor=tk.E)
@@ -85,11 +84,11 @@ class IceGUI():
         arrow_canvas.bind("<Button-1>", self.change_arrow_mouse)
         arrow_canvas.pack(side=tk.TOP, padx=5, pady=5)
 
-        progress_bar = ttk.Progressbar(left_frame, mode="indeterminate", length=200)
-        progress_bar.pack(side=tk.TOP, padx=5, pady=5)
-
         extract_button = tk.Button(left_frame, text="Extract", command=self.extract_data)
         extract_button.pack(side=tk.TOP, padx=5, pady=5)
+
+        status_label = tk.Label(left_frame, text="Ready.")
+        status_label.pack(side=tk.BOTTOM, anchor=tk.W, padx=5, pady=5)
 
         right_frame = tk.Frame(root, bd=3, relief=tk.GROOVE)
         right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
@@ -108,7 +107,7 @@ class IceGUI():
         self.step_input = step_input
         self.angle_input = angle_input
         self.arrow_canvas = arrow_canvas
-        self.progress_bar = progress_bar
+        self.status_label = status_label
         self.angle_arrow = angle_arrow
         self.angle: float = 0.0
 
@@ -118,7 +117,7 @@ class IceGUI():
         self.min_rough_label = min_rough_label
         self.max_rough_label = max_rough_label
 
-        self.extractor = ie.IceExtractor()
+        self.extractor = ie.IceExtractor(root, status_label)
 
         self.data_modified: bool = False
 
@@ -190,7 +189,7 @@ class IceGUI():
                 self.extractor.extract_points()
                 self.plot_data()
                 self.data_modified = True
-                mb.showinfo("Extraction finished", "All roughness points have been calculated.")
+                self.status_label.config(text="Ready.")
             except ValueError:
                 mb.showerror("Step value error", f"This is not a valid floating point number: {step_t}")
 
@@ -206,7 +205,6 @@ class IceGUI():
             filename: str = fd.askopenfilename()
             if filename:
                 try:
-                    self.progress_bar.start()
                     self.extractor.read_file(filename)
                     self.plot_data()
                     self.angle = self.extractor.angle
@@ -216,7 +214,7 @@ class IceGUI():
                     self.data_modified = True
                     self.min_rough_label.config(text=f"Min. roughness: {self.extractor.min_rough:.2f}")
                     self.max_rough_label.config(text=f"Max. roughness: {self.extractor.max_rough:.2f}")
-                    self.progress_bar.stop()
+                    self.status_label.config(text="Ready.")
                 except Exception as err:
                     mb.showerror("IO Error", f"An error occured while reading the file: '{err}'")
 

@@ -13,7 +13,7 @@ PointList = list[tuple[(float, float, float)]]
 
 
 class IceExtractor:
-    def __init__(self):
+    def __init__(self, root_window, status_label):
         self.angle: float = 0.0
         self.step: float = 500.0
 
@@ -51,6 +51,9 @@ class IceExtractor:
         self.max_rough: float = 0.0
         self.max_x: float = 0.0
         self.max_y: float = 0.0
+
+        self.root_window = root_window
+        self.status_label = status_label
 
     def is_empty(self) -> bool:
         return not self.start_points
@@ -109,6 +112,9 @@ class IceExtractor:
             self.original_points_x.append(x)
             self.original_points_y.append(y)
             self.original_points_z.append(z)
+
+            self.status_label.config(text=f"Reading row: {row}")
+            self.root_window.update_idletasks()
 
         logger.debug(f"Number of starting points: {len(self.start_points)}")
 
@@ -173,6 +179,9 @@ class IceExtractor:
         self.max_y = 0.0
 
         for (xr, yr, _) in self.first_row:
+            self.status_label.config(text=f"Processing column: {col}")
+            self.root_window.update_idletasks()
+
             current_row_x: list[float] = []
             current_row_y: list[float] = []
             current_row_z: list[float] = []
