@@ -1,5 +1,3 @@
 # TODO:
 
-- Show heat map of roughness values.
-- Show progress bar while loading / processing data.
 
