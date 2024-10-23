@@ -3,6 +3,7 @@
 import logging
 import math
 import sys
+import tkinter as tk
 
 # External imports:
 from scipy.interpolate import LinearNDInterpolator
@@ -13,7 +14,7 @@ PointList = list[tuple[(float, float, float)]]
 
 
 class IceExtractor:
-    def __init__(self, root_window, status_label):
+    def __init__(self, root_window: tk.Frame, status_label: tk.Label):
         self.angle: float = 0.0
         self.step: float = 500.0
 
@@ -52,8 +53,8 @@ class IceExtractor:
         self.max_x: float = 0.0
         self.max_y: float = 0.0
 
-        self.root_window = root_window
-        self.status_label = status_label
+        self.root_window: tk.Frame = root_window
+        self.status_label: tk.Label = status_label
 
     def is_empty(self) -> bool:
         return not self.start_points
