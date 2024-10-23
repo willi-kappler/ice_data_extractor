@@ -9,6 +9,7 @@ import tkinter.messagebox as mb
 # External imports
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 
 # Local imports
 import ice_extractor as ie
@@ -230,13 +231,13 @@ class IceGUI():
 
     def exit_app(self, event=None):
         if self.ask_confirm():
-            self.root.destroy()
+            self.root.quit()
 
     def plot_data(self):
         self.plot_figure.clear()
         top_ax = self.plot_figure.add_subplot(2, 1, 1)
         bottom_ax = self.plot_figure.add_subplot(2, 1, 2, sharex=top_ax, sharey=top_ax)
-        self.plot_figure.suptitle("Heatmaps of measured points")
+        # self.plot_figure.suptitle("Heatmaps of measured points")
 
         color_map = top_ax.tricontourf(
             self.extractor.original_points_x,
@@ -257,7 +258,7 @@ class IceGUI():
 
 
         self.plot_figure.colorbar(color_map, ax=top_ax)
-        top_ax.tick_params(axis="x", labelrotation=45)
+        top_ax.tick_params(axis="x", labelrotation=30)
 
         rough_x = []
         rough_y = []
@@ -275,7 +276,12 @@ class IceGUI():
             cmap="cool")
 
         self.plot_figure.colorbar(color_map, ax=bottom_ax)
-        bottom_ax.tick_params(axis="x", labelrotation=45)
+        bottom_ax.tick_params(axis="x", labelrotation=30)
+
+        top_ax.set_title("Heatmap of measured points")
+        bottom_ax.set_title("Heatmap of calculated roughness")
+
+        plt.tight_layout()
 
         self.plot_canvas.draw()
 
