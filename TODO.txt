@@ -1,3 +1,8 @@
 # TODO:
 
+- maybe try 3d plot: 
+    https://matplotlib.org/stable/gallery/mplot3d/trisurf3d.html
+    https://www.tutorialspoint.com/matplotlib/matplotlib_3d_surface_plot.htm
+
+
 
