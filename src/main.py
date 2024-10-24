@@ -20,19 +20,6 @@ def main():
     gui = ig.IceGUI()
     gui.run()
 
-    # filename = (sys.argv[1])
-
-    # ex.read_file(filename)
-
-    # plotter.get_data_from_extractor(ex)
-    # plotter.plot_both()
-    # plotter.save_figure("plot.png")
-
-    # end = time.time()
-    # duration = end - start
-
-    # logger.info(f"Duration in seconds: {duration}")
-
 
 if __name__ == "__main__":
     main()
