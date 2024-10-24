@@ -5,4 +5,7 @@
     https://www.tutorialspoint.com/matplotlib/matplotlib_3d_surface_plot.htm
 
 
+- maybe allow user to draw a line interactively on the plot ?
+
+
 
